@@ -20,6 +20,7 @@
 #include <vector>
 #include <iterator>
 #include <set>
+#include <fstream>
 
 class GraphTraverser{
 private:
@@ -32,7 +33,9 @@ public:
 
 	GraphTraverser(ColoredCDBG<UnitigData>& cdbg);
 
-	void search(string query, int k);
+	vector<pair<Kmer,set<string>>> search(string query, int k);
+
+	void writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile);
 
 };
 

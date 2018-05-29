@@ -22,7 +22,7 @@ GraphTraverser::GraphTraverser(ColoredCDBG<UnitigData>& graph) :
 
 
 
-void GraphTraverser::search(string query, int k){
+vector<pair<Kmer,set<string>>> GraphTraverser::search(string query, int k){
 
 	vector<Kmer> kmers;
 
@@ -35,23 +35,50 @@ void GraphTraverser::search(string query, int k){
 	    kmers.push_back(next);
 	}
 
+	vector<pair<Kmer,set<string>>> presence;
 
 	//search each kmer in cdbg and return color set
-	for (kmer: kmers){
+	for (auto& kmer: kmers){
 		UnitigMap<DataAccessor<UnitigData>, DataStorage<UnitigData>, false> map = cdbg.find(kmer);
 		if (map.isEmpty) {
 			cout << "kmer not found" << endl;
 			cout << kmer.toString() << endl;
 		} else {
-			cout << "kmer found!" << endl;
-			DataAccessor<UnitigData>* da = map.getData(); // Get DataAccessor from unitig
+			DataAccessor<UnitigData>* da = map.getData();
 			UnitigColors* uc = da->getUnitigColors(map);
+
+			set<string> colors;
+			for(UnitigColors::const_iterator it = uc->begin(); it != uc->end(); it.nextColor(map.len)) {
+				size_t color = it->getColorID(map.len);
+
+				//note to self: the iterator goes through all colors of the unitig, but we want to only keep
+				if (uc -> contains(map, color)){
+					colors.insert(cdbg.getColorName(color));
+				}
+			}
+
+			presence.push_back(std::make_pair(kmer,colors));
 		}
 	}
+
+	return presence;
 }
 
 
 
+void GraphTraverser::writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile) {
 
+	std::ofstream output;
+	output.open(resfile, std::ios_base::app);
+
+	for (auto& res : results){
+		set<string> colors = res.second;
+		for (auto& color : colors){
+			output << res.first.toString() << "\t" << color << endl;
+		}
+
+	}
+	output.close();
+}
 
 

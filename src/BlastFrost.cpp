@@ -100,8 +100,6 @@ void parseArguments(int argc, char **argv, CCDBG_Build_opt& opt, string& queryfi
 
 
 
-
-
 int main(int argc, char **argv) {
 
 	if (argc < 2) {
@@ -160,7 +158,8 @@ int main(int argc, char **argv) {
 				header_bool = false;
 			} else {
 				//we are reading a seq
-				tra.search(line, opt.k);
+				vector<pair<Kmer,set<string>>> res = tra.search(line, opt.k);
+				tra.writeKmerPresence(res, resultsfile);
 				header_bool = true;
 			}
 
@@ -170,6 +169,8 @@ int main(int argc, char **argv) {
 		//output file 2: for each strain found, report all kmer present
 
 		}
+
+		input.close();
 	}
 
 	cout << "Goodbye!" << endl;
