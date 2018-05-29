@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include <bifrost/ColoredCDBG.hpp>
+#include "GraphTraverser.hpp"
 #include "UnitigData.hpp"
 
 
@@ -142,12 +143,33 @@ int main(int argc, char **argv) {
 		 * if present: report all colors for this kmer
 		 */
 
+		//create and check input stream
+		std::ifstream input(queryfile);
+		if(!input) {
+			std::cout << "Cannot open input file." << std::endl;
+			return 1;
+		}
+
+		//read file line by line, parse header and sequence, run search as soon as both are present
+		bool header_bool = true;
+		std::string header;
+		std::string line;
+		while (getline(input, line)) {
+			if(header_bool){
+				header = line;
+				header_bool = false;
+			} else {
+				//we are reading a seq
+				tra.search(line, opt.k);
+				header_bool = true;
+			}
+
 
 		//output file 1: for each kmer in query, report strains present
 
 		//output file 2: for each strain found, report all kmer present
 
-
+		}
 	}
 
 	cout << "Goodbye!" << endl;

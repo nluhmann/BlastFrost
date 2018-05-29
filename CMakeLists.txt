@@ -25,7 +25,7 @@ find_library(bifrost REQUIRED)
 
 
 file(GLOB SOURCES "src/*.cpp")
-add_executable(ORFanFrost ${SOURCES})
+add_executable(BlastFrost ${SOURCES})
 
 
 target_link_libraries(BlastFrost pthread z roaring bifrost)
