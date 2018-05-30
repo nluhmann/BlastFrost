@@ -1,6 +1,8 @@
 
 #include <string>
 #include <fstream>
+#include <cstdio>
+#include <array>
 
 #include <bifrost/ColoredCDBG.hpp>
 #include "GraphTraverser.hpp"
@@ -99,6 +101,59 @@ void parseArguments(int argc, char **argv, CCDBG_Build_opt& opt, string& queryfi
 
 
 
+void writeOutput(unordered_map<string,vector<int>>& arr, string& outfile){
+	std::ofstream output(outfile,std::ofstream::binary);
+
+	for (auto& elem : arr){
+		output << elem.first;
+		for (auto& p : elem.second){
+			output << "\t" << p;
+		}
+		output << endl;
+	}
+
+
+	output.close();
+}
+
+
+void transformOutput(vector<pair<Kmer,set<string>>> res){
+	//traverse through vector once to get set of all colors identified at least once
+	set<string> colors;
+	int numberKmer = 0;
+	for (auto& p : res){
+		numberKmer++;
+		for (auto& color : p.second){
+			colors.insert(color);
+		}
+	}
+
+	//next, for each strain in colors, create an int[] with length = numberKmers, initialized to 0
+	unordered_map<string,vector<int>> arr;
+	for (auto& color: colors){
+		vector<int> vec(numberKmer, 0);
+		arr.insert({color,vec});
+	}
+
+	//traverse through vector res once more, set 1 for all colors for which the Kmer has been found
+	int counter = 0;
+	for (auto& p : res){
+		for (auto& color : p.second){
+			arr[color][counter] = 1;
+		}
+		counter++;
+	}
+
+	string outfile = "out.matrix";
+	writeOutput(arr,outfile);
+}
+
+
+
+
+
+//ToDo: only one query supported atm
+
 
 int main(int argc, char **argv) {
 
@@ -131,6 +186,9 @@ int main(int argc, char **argv) {
 
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		const clock_t begin_time = clock();
+
+
 
 		cout << "---Query graph for input sequences---" << endl;
 		GraphTraverser tra(cdbg);
@@ -141,17 +199,24 @@ int main(int argc, char **argv) {
 		 * if present: report all colors for this kmer
 		 */
 
+
+		//remove resultsfile if existing
+		if (std::remove(resultsfile.c_str()) != 0 ) {
+		    perror( "Error deleting file" );
+		}
+
 		//create and check input stream
-		std::ifstream input(queryfile);
+		ifstream input(queryfile);
 		if(!input) {
 			std::cout << "Cannot open input file." << std::endl;
 			return 1;
 		}
 
+		//ToDo: this is not robust to line breaks in fasta sequence
 		//read file line by line, parse header and sequence, run search as soon as both are present
 		bool header_bool = true;
-		std::string header;
-		std::string line;
+		string header;
+		string line;
 		while (getline(input, line)) {
 			if(header_bool){
 				header = line;
@@ -160,6 +225,7 @@ int main(int argc, char **argv) {
 				//we are reading a seq
 				vector<pair<Kmer,set<string>>> res = tra.search(line, opt.k);
 				tra.writeKmerPresence(res, resultsfile);
+				transformOutput(res);
 				header_bool = true;
 			}
 
@@ -171,7 +237,11 @@ int main(int argc, char **argv) {
 		}
 
 		input.close();
-	}
 
+
+	cout << "Search took " << float( clock () - begin_time ) /  CLOCKS_PER_SEC << "sec." << endl;
 	cout << "Goodbye!" << endl;
+	}
 }
+
+
