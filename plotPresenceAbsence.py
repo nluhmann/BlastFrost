@@ -1,3 +1,7 @@
+#virtualenv in ~/my_software/BlastFrost/.venv/
+
+
+
 import matplotlib as mpl
 mpl.use('Agg')
 
@@ -24,17 +28,22 @@ df.drop(df.columns[0],axis=1, inplace=True)
 df = df.set_index('strains')
 
 # sum number of 1's in each row, then sort rows in descending order
-df['sum'] = df[list(df.columns)].sum(axis=1,numeric_only=True)
-df.sort_values(by=['sum'],ascending=False, inplace=True)
-df.drop(['sum'],axis=1,inplace=True)
+#df['sum'] = df[list(df.columns)].sum(axis=1,numeric_only=True)
+#df.sort_values(by=['sum'],ascending=False, inplace=True)
+
+#df.drop(['sum'],axis=1,inplace=True)
 
 #print(df)
 
+a4_dims = (15.7, 8.27)
+fig, ax = plt.subplots(figsize=a4_dims)
+
+
 # Draw the heatmap
-g = sns.heatmap(df.head(50), cmap="Reds", vmax=1, vmin=0, square=False, linewidths=.5, cbar=False)
+g = sns.heatmap(df.head(50), cmap="Reds", vmax=1, vmin=0, square=False, cbar=False)
 
 # Ajust axis labels
-g.tick_params(axis='y',labelsize=3,labelrotation=45)
+g.tick_params(axis='y',labelsize=5,labelrotation=45)
 g.tick_params(axis='x',labelsize=5)
 g.set_xlabel('query kmer start position',fontsize=7)
 g.set_ylabel('reference strains',fontsize=7)

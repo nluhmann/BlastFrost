@@ -231,7 +231,6 @@ int main(int argc, char **argv) {
 
 
 		//output file 1: for each kmer in query, report strains present
-
 		//output file 2: for each strain found, report all kmer present
 
 		}
