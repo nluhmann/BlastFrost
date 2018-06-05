@@ -100,7 +100,7 @@ void parseArguments(int argc, char **argv, CCDBG_Build_opt& opt, string& queryfi
 }
 
 
-unordered_map<string,string> parseFasta(string& queryfile){
+vector<pair<string,string>> parseFasta(string& queryfile){
 
 	//create and check input stream
 	ifstream input(queryfile);
@@ -110,13 +110,13 @@ unordered_map<string,string> parseFasta(string& queryfile){
 	}
 
 
-	unordered_map<string,string> fasta;
+	vector<pair<string,string>> fasta;
 
 	string line, name, content;
 	while( std::getline(input,line).good() ){
 		if(line.empty() || line[0] == '>'){
 			if(!name.empty()){
-				fasta[name] = content;
+				fasta.push_back(std::make_pair(name,content));
 				name.clear();
 			}
 			if (!line.empty()){
@@ -133,7 +133,7 @@ unordered_map<string,string> parseFasta(string& queryfile){
 		}
 	}
 	if(!name.empty()){
-		fasta[name] = content;
+		fasta.push_back(std::make_pair(name,content));
 	}
 
 	input.close();
@@ -179,7 +179,6 @@ int main(int argc, char **argv) {
 		const clock_t begin_time = clock();
 
 
-
 		cout << "---Query graph for input sequences---" << endl;
 		GraphTraverser tra(cdbg);
 
@@ -195,36 +194,10 @@ int main(int argc, char **argv) {
 		    perror( "Error deleting file" );
 		}
 
+		//parse fasta file
+		vector<pair<string,string>> fasta = parseFasta(queryfile);
 
-//		ifstream input(queryfile);
-//		if(!input) {
-//			std::cout << "Cannot open input file." << std::endl;
-//			return 1;
-//		}
-//
-//		//ToDo: this is not robust to line breaks in fasta sequence
-//		//read file line by line, parse header and sequence, run search as soon as both are present
-//		bool header_bool = true;
-//		string header;
-//		string line;
-//		while (getline(input, line)) {
-//			if(header_bool){
-//				header = line;
-//				header_bool = false;
-//			} else {
-//				//we are reading a seq
-//				unordered_map<size_t,vector<int>> res = tra.search(line, opt.k);
-//				tra.writePresenceMatrix(res, resultsfile);
-//
-//				header_bool = true;
-//			}
-//
-//
-//		}
-//
-//		input.close();
 
-		unordered_map<string,string> fasta = parseFasta(queryfile);
 		for(auto& seq : fasta){
 			unordered_map<size_t,vector<int>> res = tra.search(seq.second, opt.k);
 		}

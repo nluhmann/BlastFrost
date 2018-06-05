@@ -51,8 +51,8 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k){
 			DataAccessor<UnitigData>* da = map.getData();
 			UnitigColors* uc = da->getUnitigColors(map);
 
-			for(UnitigColors::const_iterator it = uc->begin(); it != uc->end(); it.nextColor(map.size - Kmer::k + 1)) {
-			  size_t color = it->getColorID(map.size - Kmer::k + 1);
+			for(UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); it.nextColor()) {
+			  size_t color = it.getColorID();
 				//note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
 				if (uc -> contains(map, color)){
 					//colors.insert(cdbg.getColorName(color));
