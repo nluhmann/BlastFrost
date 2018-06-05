@@ -2,7 +2,6 @@
 #include <string>
 #include <fstream>
 #include <cstdio>
-#include <array>
 
 #include <bifrost/ColoredCDBG.hpp>
 #include "GraphTraverser.hpp"
@@ -13,7 +12,7 @@
 using namespace std;
 
 void PrintUsage() {
-	cout << "BlastFrost -f <inputFiles> -o <outfile_graph> -q <query_sequences> -r <query_result>" << endl << endl;
+	cout << "BlastFrost -f <inputFiles> -q <query_sequences> -o <outfile_prefix> " << endl << endl;
 
 	cout << "Mandatory parameters with required argument:" << endl << endl
 			<< "  -f,         Input sequence files (FASTA or FASTQ, possibly gziped) and/or graph files (GFA)"
@@ -30,7 +29,7 @@ void PrintUsage() {
 			<< endl << endl;
 }
 
-void parseArguments(int argc, char **argv, CCDBG_Build_opt& opt, string& queryfile, string& resultfile) {
+void parseArguments(int argc, char **argv, CCDBG_Build_opt& opt, string& queryfile) {
 
 	int oc; //option character
 
@@ -69,9 +68,6 @@ void parseArguments(int argc, char **argv, CCDBG_Build_opt& opt, string& queryfi
 		case 'q':
 			queryfile = optarg;
 			break;
-		case 'r':
-			resultfile = optarg;
-			break;
 		case ':':
 			cout << "Invalid option" << endl; /* ToDo: proper exception */
 			break;
@@ -96,57 +92,13 @@ void parseArguments(int argc, char **argv, CCDBG_Build_opt& opt, string& queryfi
 		opt.prefixFilenameOut = "output";
 	}
 
-
+	//check if query file is given (-q)
+	if (queryfile.empty()){
+		cout << "No query file given to search graph!" << endl;
+		exit (EXIT_FAILURE);
+	}
 }
 
-
-
-void writeOutput(unordered_map<string,vector<int>>& arr, string& outfile){
-	std::ofstream output(outfile,std::ofstream::binary);
-
-	for (auto& elem : arr){
-		output << elem.first;
-		for (auto& p : elem.second){
-			output << "\t" << p;
-		}
-		output << endl;
-	}
-
-
-	output.close();
-}
-
-
-void transformOutput(vector<pair<Kmer,set<string>>> res){
-	//traverse through vector once to get set of all colors identified at least once
-	set<string> colors;
-	int numberKmer = 0;
-	for (auto& p : res){
-		numberKmer++;
-		for (auto& color : p.second){
-			colors.insert(color);
-		}
-	}
-
-	//next, for each strain in colors, create an int[] with length = numberKmers, initialized to 0
-	unordered_map<string,vector<int>> arr;
-	for (auto& color: colors){
-		vector<int> vec(numberKmer, 0);
-		arr.insert({color,vec});
-	}
-
-	//traverse through vector res once more, set 1 for all colors for which the Kmer has been found
-	int counter = 0;
-	for (auto& p : res){
-		for (auto& color : p.second){
-			arr[color][counter] = 1;
-		}
-		counter++;
-	}
-
-	string outfile = "out.matrix";
-	writeOutput(arr,outfile);
-}
 
 
 
@@ -164,9 +116,9 @@ int main(int argc, char **argv) {
 		//Parse input arguments, parsing graph parameters and file specifying genome clustering
 		CCDBG_Build_opt opt;
 		string queryfile;
-		string resultsfile;
-		parseArguments(argc, argv, opt, queryfile, resultsfile);
+		parseArguments(argc, argv, opt, queryfile);
 
+		string resultsfile = opt.prefixFilenameOut+".query";
 
 		//build the graph, done for all command variations
 		cout << "---Build de Bruijn graph with BiFrost---" << endl;
@@ -223,15 +175,12 @@ int main(int argc, char **argv) {
 				header_bool = false;
 			} else {
 				//we are reading a seq
-				vector<pair<Kmer,set<string>>> res = tra.search(line, opt.k);
-				tra.writeKmerPresence(res, resultsfile);
-				transformOutput(res);
+				unordered_map<size_t,vector<int>> res = tra.search(line, opt.k);
+				tra.writePresenceMatrix(res, resultsfile);
+
 				header_bool = true;
 			}
 
-
-		//output file 1: for each kmer in query, report strains present
-		//output file 2: for each strain found, report all kmer present
 
 		}
 

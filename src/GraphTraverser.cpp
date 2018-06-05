@@ -22,7 +22,7 @@ GraphTraverser::GraphTraverser(ColoredCDBG<UnitigData>& graph) :
 
 
 
-vector<pair<Kmer,set<string>>> GraphTraverser::search(string query, int k){
+unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k){
 
 	vector<Kmer> kmers;
 
@@ -35,12 +35,15 @@ vector<pair<Kmer,set<string>>> GraphTraverser::search(string query, int k){
 	    kmers.push_back(next);
 	}
 
-	vector<pair<Kmer,set<string>>> presence;
+	size_t num_kmers = kmers.size();
+
+	unordered_map<size_t,vector<int>> arr;
 
 	//search each kmer in cdbg and return color set
+	int kmer_count = 0;
 	for (auto& kmer: kmers){
 		UnitigMap<DataAccessor<UnitigData>, DataStorage<UnitigData>, false> map = cdbg.find(kmer);
-		set<string> colors;
+		//set<string> colors;
 		if (map.isEmpty) {
 			//cout << "kmer not found" << endl;
 			//cout << kmer.toString() << endl;
@@ -52,30 +55,57 @@ vector<pair<Kmer,set<string>>> GraphTraverser::search(string query, int k){
 			  size_t color = it->getColorID(map.size - Kmer::k + 1);
 				//note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
 				if (uc -> contains(map, color)){
-					colors.insert(cdbg.getColorName(color));
+					//colors.insert(cdbg.getColorName(color));
+					std::unordered_map<size_t,vector<int>>::iterator iter = arr.find(color);
+
+					if (iter == arr.end()){
+						vector<int> vec(num_kmers, 0);
+						arr.insert({color,vec});
+					}
+
+					arr[color][kmer_count] = 1;
 				}
 			}
 		}
-		presence.push_back(std::make_pair(kmer,colors));
+		kmer_count++;
 	}
 
-	return presence;
+	return arr;
 }
 
 
 
-void GraphTraverser::writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile) {
+//void GraphTraverser::writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile) {
+//
+//	std::ofstream output;
+//	output.open(resfile, std::ios_base::app);
+//
+//	for (auto& res : results){
+//		set<string> colors = res.second;
+//		for (auto& color : colors){
+//			output << res.first.toString() << "\t" << color << endl;
+//		}
+//	}
+//	output.close();
+//}
 
-	std::ofstream output;
-	output.open(resfile, std::ios_base::app);
 
-	for (auto& res : results){
-		set<string> colors = res.second;
-		for (auto& color : colors){
-			output << res.first.toString() << "\t" << color << endl;
+
+void GraphTraverser::writePresenceMatrix(unordered_map<size_t,vector<int>>& arr, string& outfile){
+	std::ofstream output(outfile,std::ofstream::binary);
+
+	for (auto& elem : arr){
+		string color = cdbg.getColorName(elem.first);
+		output << color;
+		for (auto& p : elem.second){
+			output << "\t" << p;
 		}
+		output << endl;
 	}
 	output.close();
 }
+
+
+
 
 
