@@ -35,7 +35,7 @@ public:
 
 	unordered_map<size_t,vector<int>> search(string query, int k);
 
-	void writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile);
+	//void writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile);
 
 	void writePresenceMatrix(unordered_map<size_t,vector<int>>& arr, string& outfile);
 

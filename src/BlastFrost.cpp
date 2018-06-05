@@ -100,7 +100,45 @@ void parseArguments(int argc, char **argv, CCDBG_Build_opt& opt, string& queryfi
 }
 
 
+unordered_map<string,string> parseFasta(string& queryfile){
 
+	//create and check input stream
+	ifstream input(queryfile);
+	if(!input.good()){
+		cout << "Cannot open query file." << endl;
+		exit (EXIT_FAILURE);
+	}
+
+
+	unordered_map<string,string> fasta;
+
+	string line, name, content;
+	while( std::getline(input,line).good() ){
+		if(line.empty() || line[0] == '>'){
+			if(!name.empty()){
+				fasta[name] = content;
+				name.clear();
+			}
+			if (!line.empty()){
+				name = line.substr(1);
+			}
+			content.clear();
+		} else if(!name.empty()){
+			if(line.find(' ') != std::string::npos){
+				name.clear();
+				content.clear();
+			} else {
+				content += line;
+			}
+		}
+	}
+	if(!name.empty()){
+		fasta[name] = content;
+	}
+
+	input.close();
+	return fasta;
+}
 
 
 
@@ -157,39 +195,55 @@ int main(int argc, char **argv) {
 		    perror( "Error deleting file" );
 		}
 
-		//create and check input stream
-		ifstream input(queryfile);
-		if(!input) {
-			std::cout << "Cannot open input file." << std::endl;
-			return 1;
+
+//		ifstream input(queryfile);
+//		if(!input) {
+//			std::cout << "Cannot open input file." << std::endl;
+//			return 1;
+//		}
+//
+//		//ToDo: this is not robust to line breaks in fasta sequence
+//		//read file line by line, parse header and sequence, run search as soon as both are present
+//		bool header_bool = true;
+//		string header;
+//		string line;
+//		while (getline(input, line)) {
+//			if(header_bool){
+//				header = line;
+//				header_bool = false;
+//			} else {
+//				//we are reading a seq
+//				unordered_map<size_t,vector<int>> res = tra.search(line, opt.k);
+//				tra.writePresenceMatrix(res, resultsfile);
+//
+//				header_bool = true;
+//			}
+//
+//
+//		}
+//
+//		input.close();
+
+		unordered_map<string,string> fasta = parseFasta(queryfile);
+		for(auto& seq : fasta){
+			unordered_map<size_t,vector<int>> res = tra.search(seq.second, opt.k);
 		}
 
-		//ToDo: this is not robust to line breaks in fasta sequence
-		//read file line by line, parse header and sequence, run search as soon as both are present
-		bool header_bool = true;
-		string header;
-		string line;
-		while (getline(input, line)) {
-			if(header_bool){
-				header = line;
-				header_bool = false;
-			} else {
-				//we are reading a seq
-				unordered_map<size_t,vector<int>> res = tra.search(line, opt.k);
-				tra.writePresenceMatrix(res, resultsfile);
-
-				header_bool = true;
-			}
 
 
-		}
-
-		input.close();
 
 
 	cout << "Search took " << float( clock () - begin_time ) /  CLOCKS_PER_SEC << "sec." << endl;
 	cout << "Goodbye!" << endl;
 	}
 }
+
+
+
+
+
+
+
+
 
 
