@@ -2,6 +2,9 @@
 #include <string>
 #include <fstream>
 #include <cstdio>
+#include <thread>
+#include <queue>
+#include <mutex>
 
 #include <bifrost/ColoredCDBG.hpp>
 #include "GraphTraverser.hpp"
@@ -10,6 +13,12 @@
 
 
 using namespace std;
+
+
+
+std::mutex mtx;           // mutex for critical section
+
+
 
 void PrintUsage() {
 	cout << "BlastFrost -f <inputFiles> -q <query_sequences> -o <outfile_prefix> " << endl << endl;
@@ -142,7 +151,34 @@ vector<pair<string,string>> parseFasta(string& queryfile){
 
 
 
-//ToDo: only one query supported atm
+void run_subsample(queue<unordered_map<size_t,vector<int>>>& q, vector<pair<string,string>>& fasta, GraphTraverser& tra, int start, int end){
+	queue<unordered_map<size_t,vector<int>>> local_queue;
+	for(int i = start; i != end; i++) {
+		pair<string,string> seq = fasta[i];
+		unordered_map<size_t,vector<int>> res = tra.search(seq.second, 31);
+		local_queue.push(res);
+
+
+		if(local_queue.size() > 20){
+			//lock general queue
+			mtx.lock();
+			while (!local_queue.empty()){
+				unordered_map<size_t,vector<int>> item = local_queue.front();
+				local_queue.pop();
+				q.push(item);
+			}
+			//unlock queue
+			mtx.unlock();
+		}
+	}
+}
+
+
+void run_subsample2(){
+	cout << "run thread..." << endl;
+}
+
+
 
 
 int main(int argc, char **argv) {
@@ -198,12 +234,44 @@ int main(int argc, char **argv) {
 		vector<pair<string,string>> fasta = parseFasta(queryfile);
 
 
-		for(auto& seq : fasta){
-			unordered_map<size_t,vector<int>> res = tra.search(seq.second, opt.k);
+		queue<unordered_map<size_t,vector<int>>> q;
+
+		//!!! one thread is used by main!!!
+		size_t& num_threads = opt.nb_threads;
+
+		size_t bucketSize = fasta.size() / (num_threads);
+		cout << "Bucket size: " << bucketSize << endl;
+		size_t leftOvers = fasta.size() % (num_threads);
+		cout << "Leftover: " << leftOvers << endl;
+
+
+		int last = 0;
+
+		int thread_counter = 0;
+		std::vector<thread> threadList;
+
+		for(int i = 0; i <= fasta.size(); i=i+bucketSize) {
+			if (thread_counter+1 < num_threads){
+				cout << i;
+				cout << " ";
+				cout << i+bucketSize-1 << endl;
+				threadList.push_back( std::thread(run_subsample, std::ref(q), std::ref(fasta), std::ref(tra), i, (i+bucketSize-1)));
+				last = i+bucketSize;
+				thread_counter++;
+			} else {
+				break;
+			}
 		}
 
+		cout << last;
+		cout << " ";
+		cout << last+bucketSize+leftOvers-1 << endl;
+		run_subsample(q,fasta,tra,last,last+bucketSize+leftOvers-1);
 
-
+		//Join the threads with the main thread
+		for (auto& thread : threadList) {
+			thread.join();
+		}
 
 
 	cout << "Search took " << float( clock () - begin_time ) /  CLOCKS_PER_SEC << "sec." << endl;

@@ -62,7 +62,6 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k){
 						vector<int> vec(num_kmers, 0);
 						arr.insert({color,vec});
 					}
-
 					arr[color][kmer_count] = 1;
 				}
 			}
