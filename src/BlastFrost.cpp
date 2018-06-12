@@ -5,6 +5,7 @@
 #include <thread>
 #include <queue>
 #include <mutex>
+#include <atomic>
 
 #include <bifrost/ColoredCDBG.hpp>
 #include "GraphTraverser.hpp"
@@ -17,6 +18,7 @@ using namespace std;
 
 
 std::mutex mtx;           // mutex for critical section
+std::atomic<int> running(0);
 
 
 
@@ -129,7 +131,8 @@ vector<pair<string,string>> parseFasta(string& queryfile){
 				name.clear();
 			}
 			if (!line.empty()){
-				name = line.substr(1);
+				string token = line.substr(0, line.find(' '));
+				name = token.substr(1);
 			}
 			content.clear();
 		} else if(!name.empty()){
@@ -152,31 +155,48 @@ vector<pair<string,string>> parseFasta(string& queryfile){
 
 
 void run_subsample(queue<unordered_map<size_t,vector<int>>>& q, vector<pair<string,string>>& fasta, GraphTraverser& tra, int start, int end){
+	running++;
+
+
+	mtx.lock();
+	cout << "Start thread!" << endl;
+	cout << start << endl;
+	cout << end << endl;
+
+
 	queue<unordered_map<size_t,vector<int>>> local_queue;
 	for(int i = start; i != end; i++) {
+		cout << i << endl;
 		pair<string,string> seq = fasta[i];
 		unordered_map<size_t,vector<int>> res = tra.search(seq.second, 31);
-		local_queue.push(res);
 
 
-		if(local_queue.size() > 20){
+		cout << seq.first << endl;
+		cout << res.size() << endl;
+		string out = "search_"+seq.first;
+		tra.writePresenceMatrix(res,out);
+
+
+
+		//local_queue.push(res);
+
+
+		//if(local_queue.size() > 40){
 			//lock general queue
-			mtx.lock();
-			while (!local_queue.empty()){
-				unordered_map<size_t,vector<int>> item = local_queue.front();
-				local_queue.pop();
-				q.push(item);
-			}
+			//mtx.lock();
+			//while (!local_queue.empty()){
+				//unordered_map<size_t,vector<int>> item = local_queue.front();
+				//local_queue.pop();
+				//q.push(item);
+			//}
 			//unlock queue
-			mtx.unlock();
-		}
+			//mtx.unlock();
+		//}
 	}
+	mtx.unlock();
+	running--;
 }
 
-
-void run_subsample2(){
-	cout << "run thread..." << endl;
-}
 
 
 
@@ -239,9 +259,9 @@ int main(int argc, char **argv) {
 		//!!! one thread is used by main!!!
 		size_t& num_threads = opt.nb_threads;
 
-		size_t bucketSize = fasta.size() / (num_threads);
+		size_t bucketSize = fasta.size() / (num_threads-1);
 		cout << "Bucket size: " << bucketSize << endl;
-		size_t leftOvers = fasta.size() % (num_threads);
+		size_t leftOvers = fasta.size() % (num_threads-1);
 		cout << "Leftover: " << leftOvers << endl;
 
 
@@ -250,23 +270,54 @@ int main(int argc, char **argv) {
 		int thread_counter = 0;
 		std::vector<thread> threadList;
 
+
+
 		for(int i = 0; i <= fasta.size(); i=i+bucketSize) {
-			if (thread_counter+1 < num_threads){
-				cout << i;
-				cout << " ";
-				cout << i+bucketSize-1 << endl;
+			if (thread_counter+1 < num_threads-1){
+				//cout << i;
+				//cout << " ";
+				//cout << i+bucketSize-1 << endl;
+
 				threadList.push_back( std::thread(run_subsample, std::ref(q), std::ref(fasta), std::ref(tra), i, (i+bucketSize-1)));
 				last = i+bucketSize;
 				thread_counter++;
 			} else {
+				threadList.push_back( std::thread(run_subsample, std::ref(q), std::ref(fasta), std::ref(tra),last,last+bucketSize+leftOvers-1));
+				//cout << last;
+				//cout << " ";
+				//cout << last+bucketSize+leftOvers-1 << endl;
 				break;
 			}
 		}
 
-		cout << last;
-		cout << " ";
-		cout << last+bucketSize+leftOvers-1 << endl;
-		run_subsample(q,fasta,tra,last,last+bucketSize+leftOvers-1);
+
+		//todo: what if there is only 1 thread???
+
+
+
+
+		//the main thread will take care of writing the output as soon as it is available
+//		std::ofstream output(opt.prefixFilenameOut+".search",std::ofstream::binary);
+//
+//		while(running > 0){//there are still threads running
+//			while (!q.empty()){
+//				mtx.lock();
+//				unordered_map<size_t,vector<int>> item = q.front();
+//				q.pop();
+//				mtx.unlock();
+//				for (auto& elem : item){
+//					string color = cdbg.getColorName(elem.first);
+//					output << color;
+//					for (auto& p : elem.second){
+//						output << "\t" << p;
+//					}
+//					output << endl;
+//				}
+//			}
+//		}
+//
+//
+//		output.close();
 
 		//Join the threads with the main thread
 		for (auto& thread : threadList) {
@@ -274,7 +325,7 @@ int main(int argc, char **argv) {
 		}
 
 
-	cout << "Search took " << float( clock () - begin_time ) /  CLOCKS_PER_SEC << "sec." << endl;
+	cout << "Search took " << (float( clock () - begin_time ) /  CLOCKS_PER_SEC) / 100 << "sec." << endl;
 	cout << "Goodbye!" << endl;
 	}
 }
