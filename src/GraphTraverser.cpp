@@ -68,25 +68,150 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k){
 		}
 		kmer_count++;
 	}
-
 	return arr;
 }
 
 
+//ToDo: Debug!
+void GraphTraverser::remove_singletonHits(unordered_map<size_t,vector<int>>& hits, int k){
+	for (auto& hit : hits){
+		vector<int> seq = hit.second;
+		//if first and last appearance of '1' in vector is more than k appart, then everything is ok!
+		int cnt_begin = 0;
+		for (vector<int>::iterator i = seq.begin(); i != seq.end(); ++i){
+			if (*i == 1){
+				break;
+			}
+			cnt_begin++;
+		}
 
-//void GraphTraverser::writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile) {
-//
-//	std::ofstream output;
-//	output.open(resfile, std::ios_base::app);
-//
-//	for (auto& res : results){
-//		set<string> colors = res.second;
-//		for (auto& color : colors){
-//			output << res.first.toString() << "\t" << color << endl;
-//		}
-//	}
-//	output.close();
-//}
+		int cnt_end = 0;
+		for (vector<int>::reverse_iterator i = seq.rbegin(); i != seq.rend(); ++i){
+			if (*i == 1){
+				break;
+			}
+			cnt_end++;
+		}
+
+		//cout << hit.first << endl;
+		//cout << cnt_begin << endl;
+		//cout << cnt_end << endl;
+		//cout << seq.size() << endl;
+		if ((seq.size() - cnt_end - cnt_begin) <= k){
+			hits.erase(hit.first);
+			cout << "erase " << hit.first << endl;
+		}
+	}
+}
+
+
+
+
+long double GraphTraverser::compute_p(long double& k, long double& x, long double& sigma){
+	long double p = 1-pow(1-pow(sigma,-k),x);
+	return p;
+}
+
+
+
+unordered_map<size_t,double> GraphTraverser::compute_significance(unordered_map<size_t,vector<int>>& hits, long double& p) {
+	unordered_map<size_t,double> p_values;
+
+	for (auto& hit: hits){
+		int q = hit.second.size();
+
+		//compute number of 1's in vector
+		int m = std::count(hit.second.begin(), hit.second.end(), 1);
+
+		double r = gsl_cdf_binomial_Q(m, p, q);
+
+		if (r > 0.05){
+			cout << "p-value: " << r << endl;
+		}
+		p_values[hit.first] = r;
+	}
+
+	return p_values;
+}
+
+
+int GraphTraverser::compute_score(vector<int>& hit){
+	int score_match = 1;
+	int score_mismatch = -2;
+
+
+	int l = hit.size();
+		//cout << "length: " << l << endl;
+	int mismatch = 0;
+	int cnt = 0;
+	for(auto& elem: hit){
+		if (elem == 0){
+			cnt+=1;
+		} else if (cnt != 0){
+			//cout << "cnt: " << cnt << endl;
+			int local = ceil(float(cnt)/31);
+			int local2 = floor(cnt - 31 + 1);
+			int avg = (local+local2)/2;
+			mismatch += avg;
+			cnt = 0;
+		}
+	}
+
+	if (cnt != 0){
+		int local = ceil(float(cnt)/31);
+		int local2 = floor(cnt - 31 + 1);
+		int avg = (local+local2)/2;
+		mismatch += avg;
+	}
+
+	int match = l - mismatch;
+	//cout << "match: " << match << endl;
+	if (match <= 0){
+		cout << "ERROR! No matches!" << endl;
+	}
+
+	int score = match*score_match+mismatch*score_mismatch;
+	return score;
+}
+
+
+
+
+long double GraphTraverser::compute_evalue(int score, double db_size, int n){
+	long double lambda = 1.330;
+	float k = 0.621;
+
+	long double evalue = k*db_size*n*exp(-lambda*score);
+
+	return evalue;
+}
+
+long double GraphTraverser::compute_pvalue(float evalue){
+	long double pvalue = 1-exp(-evalue);
+	return pvalue;
+}
+
+
+long double GraphTraverser::compute_log_evalue(int score, double db_size, int n){
+	long double lambda = 1.330;
+	float k = 0.621;
+
+	long double log_evalue = round(log(k*db_size*n)-lambda*score);
+
+	return log_evalue;
+
+}
+
+long double GraphTraverser::compute_log_pvalue(long double log_evalue){
+	long double evalue = pow(10,log_evalue);
+	if (1-exp(-evalue) > 0){
+		return round(log(1-exp(-evalue)));
+	} else {
+		return round(log_evalue);
+	}
+}
+
+
 
 
 

@@ -22,6 +22,9 @@
 #include <set>
 #include <fstream>
 
+#include <gsl/gsl_cdf.h>
+#include <math.h>
+
 class GraphTraverser{
 private:
 
@@ -38,6 +41,22 @@ public:
 	//void writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile);
 
 	void writePresenceMatrix(unordered_map<size_t,vector<int>>& arr, string& outfile);
+
+	long double compute_p(long double& k, long double& x, long double& sigma);
+
+	unordered_map<size_t,double> compute_significance(unordered_map<size_t,vector<int>>& hits, long double& p);
+
+	void remove_singletonHits(unordered_map<size_t,vector<int>>& hits, int k);
+
+	int compute_score(vector<int>& hit);
+
+	long double compute_evalue(int score, double db_size, int n);
+
+	long double compute_pvalue(float evalue);
+
+	long double compute_log_evalue(int score, double db_size, int n);
+
+	long double compute_log_pvalue(long double log_evalue);
 
 };
 
