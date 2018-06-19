@@ -166,7 +166,7 @@ void run_subsample(queue<unordered_map<size_t,vector<int>>>& q, vector<pair<stri
 	running++;
 
 
-	mtx.lock();
+	//mtx.lock();
 	//cout << "Start thread!" << endl;
 	//cout << start << endl;
 	//cout << end << endl;
@@ -186,7 +186,7 @@ void run_subsample(queue<unordered_map<size_t,vector<int>>>& q, vector<pair<stri
 		unordered_map<size_t,vector<int>> res = tra.search(seq.second, 31);
 		tra.remove_singletonHits(res, 31);
 
-
+		unordered_map<size_t,vector<int>> filtered;
 		for (auto& hit : res){
 			int score = tra.compute_score(hit.second);
 
@@ -205,21 +205,27 @@ void run_subsample(queue<unordered_map<size_t,vector<int>>>& q, vector<pair<stri
 
 			long double pvalue2 = pow(10,log_pvalue);
 
-			if (pvalue2 > 0.05) {
-				cout << seq.first << endl;
-				cout << "score: " << score << endl;
-				cout << "log e-value: " << log_evalue << endl;
-				cout << "log p-value: " << log_pvalue << endl;
-				cout << "e-value2: " << evalue2 << endl;
-				cout << "p-value2: " << pvalue2 << endl;
+			//if (pvalue2 > 0.05) {
+			//	cout << seq.first << endl;
+			//	cout << "score: " << score << endl;
+			//	cout << "log e-value: " << log_evalue << endl;
+			//	cout << "log p-value: " << log_pvalue << endl;
+			//	cout << "e-value2: " << evalue2 << endl;
+			//	cout << "p-value2: " << pvalue2 << endl;
+			//}
+
+			if (pvalue2 <= 0.05){
+				filtered.insert(hit);
 			}
 
 		}
 
-		unordered_map<size_t,double> p_values = tra.compute_significance(res,p);
+		//unordered_map<size_t,double> p_values = tra.compute_significance(res,p);
+
 
 		string out = "search_"+seq.first;
-		tra.writePresenceMatrix(res,out);
+		tra.writePresenceMatrix(filtered,out);
+
 
 
 
@@ -238,7 +244,7 @@ void run_subsample(queue<unordered_map<size_t,vector<int>>>& q, vector<pair<stri
 			//mtx.unlock();
 		//}
 	}
-	mtx.unlock();
+	//mtx.unlock();
 	running--;
 }
 
