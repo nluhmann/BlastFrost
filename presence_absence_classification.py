@@ -26,8 +26,10 @@ for elem in markers:
             all_strains[strain] = []
 
 
+order = []
 
 for elem in markers:
+    order.append(elem)
     for strain in all_strains:
         if strain in markers[elem]:
             all_strains[strain].append('1')
@@ -38,7 +40,7 @@ for elem in markers:
 
 
 out = open("outfile.txt","w")
-
+out.write("strain" + "\t"+"\t".join(order)+"\n")
 for elem in all_strains.keys():
     out.write(elem+"\t"+"\t".join(all_strains[elem])+"\n")
 
