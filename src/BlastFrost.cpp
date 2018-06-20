@@ -36,11 +36,14 @@ void PrintUsage() {
 	cout << "Mandatory parameters with required argument:" << endl << endl
 			<< "  -f,         Input sequence files (FASTA or FASTQ, possibly gziped) and/or graph files (GFA)"
 			<< endl
-			<< "  -o,         Prefix for output file (GFA output by default)"
-			<< endl << endl << "Optional parameters with required argument:"
-			<< endl << endl
+			<< "  -q,         Query sequences (multiple FASTA)"
+			<< endl
+			<< "  -o,         Prefix for output files (default: 'output')"
+
+			<< endl << endl << "Optional parameters:"<< endl << endl
 			<< "  -t,             Number of threads (default is 1)"
-			<< endl << endl << "Optional parameters with no argument:" << endl
+			<< endl
+			<< "  -k,             Length of k-mers (default is 31, max. is 31)"
 			<< endl
 			<< "  -i,           Clip tips shorter than k k-mers in length"
 			<< endl
@@ -162,14 +165,11 @@ vector<pair<string,string>> parseFasta(string& queryfile){
 
 
 
-void run_subsample(queue<unordered_map<size_t,vector<int>>>& q, vector<pair<string,string>>& fasta, GraphTraverser& tra, int start, int end){
+void run_subsample(ColoredCDBG<UnitigData>& cdbg, vector<pair<string,string>>& fasta, GraphTraverser& tra, int start, int end){
 	running++;
 
 
 	//mtx.lock();
-	//cout << "Start thread!" << endl;
-	//cout << start << endl;
-	//cout << end << endl;
 
 
 	long double k = 31;
@@ -183,39 +183,30 @@ void run_subsample(queue<unordered_map<size_t,vector<int>>>& q, vector<pair<stri
 	for(int i = start; i <= end; i++) {
 
 		pair<string,string> seq = fasta[i];
-		unordered_map<size_t,vector<int>> res = tra.search(seq.second, 31);
-		tra.remove_singletonHits(res, 31);
+		unordered_map<size_t,vector<int>> res = tra.search(seq.second, cdbg.getK());
+		tra.remove_singletonHits(res, cdbg.getK());
 
 		unordered_map<size_t,vector<int>> filtered;
 		for (auto& hit : res){
 			int score = tra.compute_score(hit.second);
-
-
 			int len = hit.second.size();
 			double db_size = 714*x;
 
 			long double log_evalue = tra.compute_log_evalue(score,db_size,len);
-
-
 			long double log_pvalue = tra.compute_log_pvalue(log_evalue);
-
-
 			long double evalue2 = pow(10,log_evalue);
-
-
 			long double pvalue2 = pow(10,log_pvalue);
 
-			//if (pvalue2 > 0.05) {
-			//	cout << seq.first << endl;
-			//	cout << "score: " << score << endl;
-			//	cout << "log e-value: " << log_evalue << endl;
-			//	cout << "log p-value: " << log_pvalue << endl;
-			//	cout << "e-value2: " << evalue2 << endl;
-			//	cout << "p-value2: " << pvalue2 << endl;
-			//}
 
 			if (pvalue2 <= 0.05){
 				filtered.insert(hit);
+			} else {
+					cout << seq.first << endl;
+					cout << "score: " << score << endl;
+					cout << "log e-value: " << log_evalue << endl;
+					cout << "log p-value: " << log_pvalue << endl;
+					cout << "e-value2: " << evalue2 << endl;
+					cout << "p-value2: " << pvalue2 << endl;
 			}
 
 		}
@@ -227,87 +218,31 @@ void run_subsample(queue<unordered_map<size_t,vector<int>>>& q, vector<pair<stri
 		tra.writePresenceMatrix(filtered,out);
 
 
-
-
-		//local_queue.push(res);
-
-
-		//if(local_queue.size() > 40){
-			//lock general queue
-			//mtx.lock();
-			//while (!local_queue.empty()){
-				//unordered_map<size_t,vector<int>> item = local_queue.front();
-				//local_queue.pop();
-				//q.push(item);
-			//}
-			//unlock queue
-			//mtx.unlock();
-		//}
 	}
 	//mtx.unlock();
 	running--;
 }
 
 
-void test_stats(){
-	long double k = 31;
-	long double x = 3000000000;
-	long double sigma = 4;
-	long double y = pow(sigma,-k);
-	cout << "y: " << y << endl;
-	long double a = pow(1-y,x);
-	cout << "a: " << a << endl;
-	long double p = 1-pow(1-y,x);
-	cout << "p: " << p << endl;
 
+int estimate_avg_genomeSize(vector<string> files){
+	int cnt = 0;
+	int size = 0;
+	while (cnt < 10){
 
-	double b = gsl_ran_binomial_pdf(2, 0.5, 20);
-	cout << b << endl;
-	b = gsl_ran_binomial_pdf(5, 0.5, 20);
-	cout << b << endl;
-	b = gsl_ran_binomial_pdf(8, 0.5, 20);
-	cout << b << endl;
-	b = gsl_ran_binomial_pdf(12, 0.5, 20);
-	cout << b << endl;
-	b = gsl_ran_binomial_pdf(18, 0.5, 20);
-	cout << b << endl;
-
-	cout << "------" << endl;
-
-	double r = gsl_cdf_binomial_Q(2, 0.5, 20);
-	cout << r << endl;
-	r = gsl_cdf_binomial_Q(5, 0.5, 20);
-	cout << r << endl;
-	r = gsl_cdf_binomial_Q(8, 0.5, 20);
-	cout << r << endl;
-	r = gsl_cdf_binomial_Q(12, 0.5, 20);
-	cout << r << endl;
-	r = gsl_cdf_binomial_Q(13, 0.5, 20);
-	cout << r << endl;
-	r = gsl_cdf_binomial_Q(14, 0.5, 20);
-	cout << r << endl;
-	r = gsl_cdf_binomial_Q(150, 0.5, 200);
-	cout << r << endl;
-	r = gsl_cdf_binomial_Q(16, 0.5, 20);
-	cout << r << endl;
-	r = gsl_cdf_binomial_Q(17, 0.5, 20);
-	cout << r << endl;
-	r = gsl_cdf_binomial_Q(18, 0.5, 20);
-	cout << r << endl;
-
-	cout << "------" << endl;
-
-	double res = gsl_cdf_binomial_Q(1, p, 1000);
-	cout << res << endl;
-	res = gsl_cdf_binomial_Q(2, p, 1000);
-	cout << res << endl;
-	res = gsl_cdf_binomial_Q(5, p, 1000);
-	cout << res << endl;
-	res = gsl_cdf_binomial_Q(500, p, 1000);
-	cout << res << endl;
-	res = gsl_cdf_binomial_Q(1000, p, 1000);
-	cout << res << endl;
+		ifstream file(files[cnt], ios::binary | ios::ate);
+		if (size == 0){
+			size = file.tellg();
+		} else {
+			size = (size + file.tellg())/2;
+		}
+		cnt++;
+	}
+	cout << "Avg genome size: " << size << endl;
+	return size;
 }
+
+
 
 
 int main(int argc, char **argv) {
@@ -339,7 +274,7 @@ int main(int argc, char **argv) {
 		cdbg.mapColors(opt);
 		cdbg.write(opt.prefixFilenameOut, opt.nb_threads, opt.verbose);
 
-
+		int size = estimate_avg_genomeSize(opt.filename_seq_in);
 
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -365,74 +300,44 @@ int main(int argc, char **argv) {
 		vector<pair<string,string>> fasta = parseFasta(queryfile);
 
 
-		queue<unordered_map<size_t,vector<int>>> q;
-
 		//!!! one thread is used by main!!!
 		size_t& num_threads = opt.nb_threads;
 
-		size_t bucketSize = fasta.size() / (num_threads-1);
-		cout << "Bucket size: " << bucketSize << endl;
-		size_t leftOvers = fasta.size() % (num_threads-1);
-		cout << "Leftover: " << leftOvers << endl;
+		cout << "Number threads: " << num_threads << endl;
+		if (num_threads > 1){
+			cout << "Parallel mode!" << endl;
+			size_t bucketSize = fasta.size() / (num_threads-1);
+			cout << "Bucket size: " << bucketSize << endl;
+			size_t leftOvers = fasta.size() % (num_threads-1);
+			cout << "Leftover: " << leftOvers << endl;
 
 
-		int last = 0;
+			int last = 0;
 
-		int thread_counter = 0;
-		std::vector<thread> threadList;
+			int thread_counter = 0;
+			std::vector<thread> threadList;
 
 
 
-		for(int i = 0; i <= fasta.size(); i=i+bucketSize) {
-			if (thread_counter+1 < num_threads-1){
-				//cout << i;
-				//cout << " ";
-				//cout << i+bucketSize-1 << endl;
+			for(int i = 0; i <= fasta.size(); i=i+bucketSize) {
+				if (thread_counter+1 < num_threads-1){
+					threadList.push_back( std::thread(run_subsample, std::ref(cdbg), std::ref(fasta), std::ref(tra), i, (i+bucketSize-1)));
+					last = i+bucketSize;
+					thread_counter++;
+				} else {
+					threadList.push_back( std::thread(run_subsample, std::ref(cdbg), std::ref(fasta), std::ref(tra),last,last+bucketSize+leftOvers-1));
+					break;
+				}
+			}
 
-				threadList.push_back( std::thread(run_subsample, std::ref(q), std::ref(fasta), std::ref(tra), i, (i+bucketSize-1)));
-				last = i+bucketSize;
-				thread_counter++;
-			} else {
-				threadList.push_back( std::thread(run_subsample, std::ref(q), std::ref(fasta), std::ref(tra),last,last+bucketSize+leftOvers-1));
-				//cout << last;
-				//cout << " ";
-				//cout << last+bucketSize+leftOvers-1 << endl;
-				break;
+			//Join the threads with the main thread
+			for (auto& thread : threadList) {
+				thread.join();
 			}
 		}
-
-
-		//todo: what if there is only 1 thread???
-
-
-
-
-		//the main thread will take care of writing the output as soon as it is available
-//		std::ofstream output(opt.prefixFilenameOut+".search",std::ofstream::binary);
-//
-//		while(running > 0){//there are still threads running
-//			while (!q.empty()){
-//				mtx.lock();
-//				unordered_map<size_t,vector<int>> item = q.front();
-//				q.pop();
-//				mtx.unlock();
-//				for (auto& elem : item){
-//					string color = cdbg.getColorName(elem.first);
-//					output << color;
-//					for (auto& p : elem.second){
-//						output << "\t" << p;
-//					}
-//					output << endl;
-//				}
-//			}
-//		}
-//
-//
-//		output.close();
-
-		//Join the threads with the main thread
-		for (auto& thread : threadList) {
-			thread.join();
+		else {
+			cout << "Serial mode!" << endl;
+			run_subsample(cdbg, fasta, tra, 0, fasta.size()-1);
 		}
 
 

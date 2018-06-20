@@ -74,6 +74,9 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k){
 
 //ToDo: Debug!
 void GraphTraverser::remove_singletonHits(unordered_map<size_t,vector<int>>& hits, int k){
+
+	vector<size_t> to_be_removed;
+
 	for (auto& hit : hits){
 		vector<int> seq = hit.second;
 		//if first and last appearance of '1' in vector is more than k appart, then everything is ok!
@@ -93,15 +96,16 @@ void GraphTraverser::remove_singletonHits(unordered_map<size_t,vector<int>>& hit
 			cnt_end++;
 		}
 
-		//cout << hit.first << endl;
-		//cout << cnt_begin << endl;
-		//cout << cnt_end << endl;
-		//cout << seq.size() << endl;
 		if ((seq.size() - cnt_end - cnt_begin) <= k){
-			hits.erase(hit.first);
-			cout << "erase " << hit.first << endl;
+			to_be_removed.push_back(hit.first);
 		}
 	}
+
+	for (auto& elem : to_be_removed){
+		hits.erase(elem);
+	}
+
+	cout << "Number of singleton Hits removed: " << to_be_removed.size() << endl;
 }
 
 

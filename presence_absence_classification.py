@@ -56,7 +56,7 @@ out = open("clusters.txt","w")
 clusterID = 0
 for elem in clusters:
     for strain in clusters[elem]:
-        out.write(strain + "\t" + str(clusterID)+"\n")
+        out.write(strain + "\t" + str(elem) + "\t" + str(clusterID)+"\n")
 
     clusterID+=1
 
