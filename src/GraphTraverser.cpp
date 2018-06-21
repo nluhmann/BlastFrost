@@ -219,12 +219,12 @@ long double GraphTraverser::compute_log_pvalue(long double log_evalue){
 
 
 
-void GraphTraverser::writePresenceMatrix(unordered_map<size_t,vector<int>>& arr, string& outfile){
+void GraphTraverser::writePresenceMatrix(unordered_map<size_t,vector<int>>& arr, string& outfile, unordered_map<size_t,long double>& pvalues){
 	std::ofstream output(outfile,std::ofstream::binary);
 
 	for (auto& elem : arr){
 		string color = cdbg.getColorName(elem.first);
-		output << color;
+		output << color << "\t" << pvalues[elem.first];
 		for (auto& p : elem.second){
 			output << "\t" << p;
 		}

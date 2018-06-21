@@ -1,6 +1,6 @@
 import sys
 import collections
-
+import itertools
 
 #for each input file, save list of present strains
 
@@ -53,18 +53,33 @@ clusters = collections.defaultdict(list)
 for elem in all_strains:
     clusters[tuple(all_strains[elem])].append(elem)
 
+clusterIDs = {}
 
 out = open("clusters.txt","w")
 clusterID = 0
 for elem in clusters:
     for strain in clusters[elem]:
         out.write(strain + "\t" + str(elem) + "\t" + str(clusterID)+"\n")
-
+    clusterIDs[elem] = clusterID
     clusterID+=1
 
+out.close()
 
 
+out = open("cluster_dist.txt","w")
+
+#ToDo: I need the cluster ID for this, not the cluster element....
+for pair in itertools.combinations(clusters.keys(),2):
+    dist = 0
+    for i in range(0,len(pair[0])):
+        if pair[0][i] != pair[1][i]:
+            dist += 1
+
+    out.write(str(clusterIDs[pair[0]]) + "\t" + str(clusterIDs[pair[1]])+"\t"+str(dist)+"\n")
 
 out.close()
+
+
+
 
 

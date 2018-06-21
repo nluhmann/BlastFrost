@@ -40,7 +40,7 @@ public:
 
 	//void writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile);
 
-	void writePresenceMatrix(unordered_map<size_t,vector<int>>& arr, string& outfile);
+	void writePresenceMatrix(unordered_map<size_t,vector<int>>& arr, string& outfile, unordered_map<size_t,long double>& pvalues);
 
 	long double compute_p(long double& k, long double& x, long double& sigma);
 

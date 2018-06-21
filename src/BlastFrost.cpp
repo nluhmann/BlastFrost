@@ -187,6 +187,7 @@ void run_subsample(ColoredCDBG<UnitigData>& cdbg, vector<pair<string,string>>& f
 		tra.remove_singletonHits(res, cdbg.getK());
 
 		unordered_map<size_t,vector<int>> filtered;
+		unordered_map<size_t,long double> pvalues;
 		for (auto& hit : res){
 			int score = tra.compute_score(hit.second);
 			int len = hit.second.size();
@@ -200,6 +201,7 @@ void run_subsample(ColoredCDBG<UnitigData>& cdbg, vector<pair<string,string>>& f
 
 			if (pvalue2 <= 0.05){
 				filtered.insert(hit);
+				pvalues[hit.first] = pvalue2;
 			} else {
 					cout << seq.first << endl;
 					cout << "score: " << score << endl;
@@ -215,7 +217,7 @@ void run_subsample(ColoredCDBG<UnitigData>& cdbg, vector<pair<string,string>>& f
 
 
 		string out = "search_"+seq.first;
-		tra.writePresenceMatrix(filtered,out);
+		tra.writePresenceMatrix(filtered,out,pvalues);
 
 
 	}
