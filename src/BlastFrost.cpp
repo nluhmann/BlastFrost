@@ -296,7 +296,6 @@ string runLength_encode(const vector<int>& v){
 		n = "1:"+std::to_string(cnt1)+",";
 	}
 	res += n;
-	cout << res << endl;
 	return res;
 }
 
@@ -323,6 +322,7 @@ int main(int argc, char **argv) {
 		//We have assemblies as input, so need the reference mode (counting singleton kmers) and want to have colors
 		opt.reference_mode = true;
 		opt.outputColors = true;
+		opt.nb_threads = 20;
 
 		//create cdbg instance, k=kmer length (default 31), g=length of minimizer (default 23)
 		ColoredCDBG<UnitigData> cdbg(opt.k);
@@ -414,7 +414,6 @@ int main(int argc, char **argv) {
 			mtx_writing.unlock();
 			output.close();
 
-			cout << "end: " << q.size() << endl;
 
 			//Join the threads with the main thread
 			for (auto& thread : threadList) {
