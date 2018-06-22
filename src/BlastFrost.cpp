@@ -25,7 +25,8 @@ using namespace std;
 
 
 
-std::mutex mtx;           // mutex for critical section
+std::mutex mtx_queue;           // mutex for critical section
+std::mutex mtx_writing;
 std::atomic<int> running(0);
 
 
@@ -122,7 +123,7 @@ void parseArguments(int argc, char **argv, CCDBG_Build_opt& opt, string& queryfi
 }
 
 
-vector<pair<string,string>> parseFasta(string& queryfile){
+vector<pair<string,string>> parseFasta(const string& queryfile){
 
 	//create and check input stream
 	ifstream input(queryfile);
@@ -131,10 +132,11 @@ vector<pair<string,string>> parseFasta(string& queryfile){
 		exit (EXIT_FAILURE);
 	}
 
-
 	vector<pair<string,string>> fasta;
 
-	string line, name, content;
+	string line;
+	string name;
+	string content;
 	while( std::getline(input,line).good() ){
 		if(line.empty() || line[0] == '>'){
 			if(!name.empty()){
@@ -165,69 +167,86 @@ vector<pair<string,string>> parseFasta(string& queryfile){
 
 
 
-void run_subsample(ColoredCDBG<UnitigData>& cdbg, vector<pair<string,string>>& fasta, GraphTraverser& tra, int start, int end){
+struct searchResult {
+  long double evalue;
+  long double pvalue;
+  string query;
+  size_t colorID;
+  vector<int> hitrun;
+} ;
+
+
+
+
+void run_subsample(queue<vector<searchResult>>& q, const ColoredCDBG<UnitigData>& cdbg, const vector<pair<string,string>>& fasta, GraphTraverser& tra, int start, int end, const int& avg_genomeSize){
 	running++;
-
-
 	//mtx.lock();
 
+	//long double k = 31;
+	//const int x = 4500000;
+	const int sigma = 4;
 
-	long double k = 31;
-	long double x = 4500000;
-	long double sigma = 4;
+	//long double p = tra.compute_p(k, x, sigma);
+	const size_t numberStrains = cdbg.getNbColors();
 
-	long double p = tra.compute_p(k, x, sigma);
+	//ToDo: check db_size parameter
+	//double db_size = 714*x;
+	const double db_size = numberStrains*avg_genomeSize;
 
-
-	queue<unordered_map<size_t,vector<int>>> local_queue;
 	for(int i = start; i <= end; i++) {
-
+		vector<searchResult> results;
 		pair<string,string> seq = fasta[i];
 		unordered_map<size_t,vector<int>> res = tra.search(seq.second, cdbg.getK());
-		tra.remove_singletonHits(res, cdbg.getK());
+		tra.remove_singletonHits(res);
 
-		unordered_map<size_t,vector<int>> filtered;
-		unordered_map<size_t,long double> pvalues;
+
 		for (auto& hit : res){
-			int score = tra.compute_score(hit.second);
-			int len = hit.second.size();
-			double db_size = 714*x;
+			const int score = tra.compute_score(hit.second);
+			const int len = hit.second.size();
 
-			long double log_evalue = tra.compute_log_evalue(score,db_size,len);
-			long double log_pvalue = tra.compute_log_pvalue(log_evalue);
-			long double evalue2 = pow(10,log_evalue);
-			long double pvalue2 = pow(10,log_pvalue);
+
+			const long double log_evalue = tra.compute_log_evalue(score,db_size,len);
+			const long double log_pvalue = tra.compute_log_pvalue(log_evalue);
+			const long double evalue2 = pow(10,log_evalue);
+			const long double pvalue2 = pow(10,log_pvalue);
 
 
 			if (pvalue2 <= 0.05){
-				filtered.insert(hit);
-				pvalues[hit.first] = pvalue2;
+
+				//create new searchResult and push to all results
+				searchResult result;
+				result.evalue = evalue2;
+				result.pvalue = pvalue2;
+				result.query = seq.first;
+				result.colorID = hit.first;
+				result.hitrun = hit.second;
+				results.push_back(result);
+
 			} else {
-					cout << seq.first << endl;
-					cout << "score: " << score << endl;
-					cout << "log e-value: " << log_evalue << endl;
-					cout << "log p-value: " << log_pvalue << endl;
-					cout << "e-value2: " << evalue2 << endl;
-					cout << "p-value2: " << pvalue2 << endl;
+					//cout << seq.first << endl;
+					//cout << "score: " << score << endl;
+					//cout << "log e-value: " << log_evalue << endl;
+					//cout << "log p-value: " << log_pvalue << endl;
+					//cout << "e-value2: " << evalue2 << endl;
+					//cout << "p-value2: " << pvalue2 << endl;
 			}
 
 		}
 
-		//unordered_map<size_t,double> p_values = tra.compute_significance(res,p);
-
-
-		string out = "search_"+seq.first;
-		tra.writePresenceMatrix(filtered,out,pvalues);
-
+		//we've found all results for this query, push to writing queue!
+		mtx_queue.lock();
+		q.push(results);
+		mtx_queue.unlock();
 
 	}
-	//mtx.unlock();
+
 	running--;
 }
 
 
 
-int estimate_avg_genomeSize(vector<string> files){
+
+int estimate_avg_genomeSize(const vector<string>& files){
 	int cnt = 0;
 	int size = 0;
 	while (cnt < 10){
@@ -244,6 +263,42 @@ int estimate_avg_genomeSize(vector<string> files){
 	return size;
 }
 
+
+string runLength_encode(const vector<int>& v){
+	int cnt1 = 0;
+	int cnt0 = 0;
+	string res;
+	string n;
+	for (auto& elem : v){
+		if (elem == 1){
+			if (cnt1 == 0 && cnt0 != 0){
+				//we start a new run of 1's
+				n = "0:"+std::to_string(cnt0)+",";
+				res += n;
+				cnt0 = 0;
+			}
+			cnt1++;
+		} else if (elem == 0){
+			if (cnt0 == 0 && cnt1 != 0){
+				//we start a new run of 0's
+				n = "1:"+std::to_string(cnt1)+",";
+				res += n;
+				cnt1 = 0;
+			}
+			cnt0++;
+		} else {
+			cout << "ERROR" << endl;
+		}
+	}
+	if (cnt0 != 0){
+		n = "0:"+std::to_string(cnt0)+",";
+	} else {
+		n = "1:"+std::to_string(cnt1)+",";
+	}
+	res += n;
+	cout << res << endl;
+	return res;
+}
 
 
 
@@ -276,8 +331,6 @@ int main(int argc, char **argv) {
 		cdbg.mapColors(opt);
 		cdbg.write(opt.prefixFilenameOut, opt.nb_threads, opt.verbose);
 
-		int size = estimate_avg_genomeSize(opt.filename_seq_in);
-
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		const clock_t begin_time = clock();
@@ -300,46 +353,91 @@ int main(int argc, char **argv) {
 
 		//parse fasta file
 		vector<pair<string,string>> fasta = parseFasta(queryfile);
+		const int avg_genomeSize = estimate_avg_genomeSize(opt.filename_seq_in);
 
 
 		//!!! one thread is used by main!!!
 		size_t& num_threads = opt.nb_threads;
 
+		queue<vector<searchResult>> q;
+
 		cout << "Number threads: " << num_threads << endl;
 		if (num_threads > 1){
 			cout << "Parallel mode!" << endl;
+
 			size_t bucketSize = fasta.size() / (num_threads-1);
 			cout << "Bucket size: " << bucketSize << endl;
 			size_t leftOvers = fasta.size() % (num_threads-1);
 			cout << "Leftover: " << leftOvers << endl;
-
 
 			int last = 0;
 
 			int thread_counter = 0;
 			std::vector<thread> threadList;
 
-
-
 			for(int i = 0; i <= fasta.size(); i=i+bucketSize) {
 				if (thread_counter+1 < num_threads-1){
-					threadList.push_back( std::thread(run_subsample, std::ref(cdbg), std::ref(fasta), std::ref(tra), i, (i+bucketSize-1)));
+					threadList.push_back( std::thread(run_subsample, std::ref(q), std::ref(cdbg), std::ref(fasta), std::ref(tra), i, (i+bucketSize-1), std::ref(avg_genomeSize)));
 					last = i+bucketSize;
 					thread_counter++;
 				} else {
-					threadList.push_back( std::thread(run_subsample, std::ref(cdbg), std::ref(fasta), std::ref(tra),last,last+bucketSize+leftOvers-1));
+					threadList.push_back( std::thread(run_subsample, std::ref(q), std::ref(cdbg), std::ref(fasta), std::ref(tra),last,last+bucketSize+leftOvers-1,std::ref(avg_genomeSize)));
 					break;
 				}
 			}
+
+
+
+
+
+			//the main thread will take care of writing the output as soon as it is available
+			std::ofstream output(opt.prefixFilenameOut+".search",std::ofstream::binary);
+
+			mtx_writing.lock();
+			cout << "Start writing!" << endl;
+			cout << running << endl;
+			while(running > 0 || ! q.empty()){//there are still threads running
+				if (! q.empty()){
+					mtx_queue.lock();
+					vector<searchResult> item = q.front();
+					q.pop();
+					mtx_queue.unlock();
+					for (auto& result : item){
+						string color = cdbg.getColorName(result.colorID);
+						output << result.query << "\t" << color << "\t" << result.pvalue << "\t";
+						string res = runLength_encode(result.hitrun);
+						output << res << endl;
+					}
+				}
+			}
+
+			mtx_writing.unlock();
+			output.close();
+
+			cout << "end: " << q.size() << endl;
 
 			//Join the threads with the main thread
 			for (auto& thread : threadList) {
 				thread.join();
 			}
+
+
 		}
 		else {
 			cout << "Serial mode!" << endl;
-			run_subsample(cdbg, fasta, tra, 0, fasta.size()-1);
+			run_subsample(q, cdbg, fasta, tra, 0, fasta.size()-1, avg_genomeSize);
+			std::ofstream output(opt.prefixFilenameOut+".search",std::ofstream::binary);
+			while (!q.empty()){
+				vector<searchResult> item = q.front();
+				q.pop();
+				for (auto& result : item){
+					string color = cdbg.getColorName(result.colorID);
+					output << result.query << "\t" << color << "\t" << result.pvalue << "\t";
+					string res = runLength_encode(result.hitrun);
+					output << res << endl;
+				}
+			}
+			output.close();
 		}
 
 
