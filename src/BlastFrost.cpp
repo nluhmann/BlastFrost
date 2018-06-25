@@ -193,6 +193,10 @@ void run_subsample(queue<vector<searchResult>>& q, const ColoredCDBG<UnitigData>
 	//double db_size = 714*x;
 	const double db_size = numberStrains*avg_genomeSize;
 
+	if (end == 0){
+		end = fasta.size()-1;
+	}
+
 	for(int i = start; i <= end; i++) {
 		vector<searchResult> results;
 		pair<string,string> seq = fasta[i];
@@ -322,7 +326,6 @@ int main(int argc, char **argv) {
 		//We have assemblies as input, so need the reference mode (counting singleton kmers) and want to have colors
 		opt.reference_mode = true;
 		opt.outputColors = true;
-		opt.nb_threads = 20;
 
 		//create cdbg instance, k=kmer length (default 31), g=length of minimizer (default 23)
 		ColoredCDBG<UnitigData> cdbg(opt.k);
@@ -370,18 +373,15 @@ int main(int argc, char **argv) {
 			size_t leftOvers = fasta.size() % (num_threads-1);
 			cout << "Leftover: " << leftOvers << endl;
 
-			int last = 0;
-
 			int thread_counter = 0;
 			std::vector<thread> threadList;
 
 			for(int i = 0; i <= fasta.size(); i=i+bucketSize) {
 				if (thread_counter+1 < num_threads-1){
 					threadList.push_back( std::thread(run_subsample, std::ref(q), std::ref(cdbg), std::ref(fasta), std::ref(tra), i, (i+bucketSize-1), std::ref(avg_genomeSize)));
-					last = i+bucketSize;
 					thread_counter++;
 				} else {
-					threadList.push_back( std::thread(run_subsample, std::ref(q), std::ref(cdbg), std::ref(fasta), std::ref(tra),last,last+bucketSize+leftOvers-1,std::ref(avg_genomeSize)));
+					threadList.push_back( std::thread(run_subsample, std::ref(q), std::ref(cdbg), std::ref(fasta), std::ref(tra),i,0,std::ref(avg_genomeSize)));
 					break;
 				}
 			}
@@ -394,8 +394,6 @@ int main(int argc, char **argv) {
 			std::ofstream output(opt.prefixFilenameOut+".search",std::ofstream::binary);
 
 			mtx_writing.lock();
-			cout << "Start writing!" << endl;
-			cout << running << endl;
 			while(running > 0 || ! q.empty()){//there are still threads running
 				if (! q.empty()){
 					mtx_queue.lock();
