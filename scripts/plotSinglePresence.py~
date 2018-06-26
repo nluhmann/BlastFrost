@@ -1,0 +1,64 @@
+#virtualenv in ~/my_software/BlastFrost/.venv/
+
+import matplotlib as mpl
+mpl.use('Agg')
+
+
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
+import sys
+
+sns.set(style="white")
+
+
+input_file = sys.argv[1]
+
+df = pd.read_csv(input_file,header=0,sep='\t', dtype={'subspecies': str})
+
+#print(df)
+# split strain column to remove paths
+#df['strain'] = df[0].str.split('/').str[-1]
+#df.drop(df.columns[0],axis=1, inplace=True)
+
+# set strain column as index
+#df = df.set_index('strain')
+
+# sum number of 1's in each row, then sort rows in descending order
+#df['sum'] = df[list(df.columns)].sum(axis=1,numeric_only=True)
+#df.sort_values(by=['sum'],ascending=False, inplace=True)
+
+#df.drop(['sum'],axis=1,inplace=True)
+
+flights = sns.load_dataset("flights")
+print(flights)
+flights = flights.pivot("month", "year", "passengers")
+print(flights)
+#df['strain'].unique()
+#df.strain.unique()
+
+
+a4_dims = (15.7, 8.27)
+fig, ax = plt.subplots(figsize=a4_dims)
+
+#data = df.pivot("strain","gene","presence")
+#print(data)
+
+subset = df.pivot("strain","query","presence")
+#subset = subset.set_index(['strain','query'])
+print(subset)
+
+# Draw the heatmap
+g = sns.heatmap(subset, cmap="Reds", vmax=1, vmin=0, square=False, cbar=False)
+
+# Ajust axis labels
+#g.tick_params(axis='y',labelsize=5,labelrotation=45)
+#g.tick_params(axis='x',labelsize=5)
+#g.set_xlabel('query kmer start position',fontsize=7)
+#g.set_ylabel('reference strains',fontsize=7)
+
+
+plt.savefig("./heatmap.pdf", format="pdf")
+
+#plt.show()

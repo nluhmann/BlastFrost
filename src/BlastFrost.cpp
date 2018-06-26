@@ -91,6 +91,9 @@ void parseArguments(int argc, char **argv, CCDBG_Build_opt& opt, string& queryfi
 		case 'q':
 			queryfile = optarg;
 			break;
+		case 'r':
+			queryfile = optarg;
+			break;
 		case ':':
 			cout << "Invalid option" << endl; /* ToDo: proper exception */
 			break;
@@ -121,6 +124,74 @@ void parseArguments(int argc, char **argv, CCDBG_Build_opt& opt, string& queryfi
 		exit (EXIT_FAILURE);
 	}
 }
+
+struct searchOptions {
+  string graphfile = "";
+  string queryfile = "";
+  size_t nb_threads = 1;
+  bool verbose = false;
+  string outprefix = "output";
+} ;
+
+
+void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
+
+	int oc; //option character
+
+	while ((oc = getopt(argc, argv, "o:t:q:g:v")) != -1) {
+		switch (oc) {
+		case 'o':
+			/* handle -o, set fileprefix */
+			opt.outprefix = optarg;
+			break;
+		case 't':
+			/* handle -t, set number of threads */
+			opt.nb_threads = atoi(optarg);
+			break;
+		case 'v':
+			//handle -v, verbose mode
+			opt.verbose = true;
+			break;
+		case 'q':
+			opt.queryfile = optarg;
+			break;
+		case 'g':
+			opt.graphfile = optarg;
+			break;
+		case ':':
+			cout << "Invalid option" << endl; /* ToDo: proper exception */
+			break;
+		case '?':
+			cout << "Invalid option" << endl;
+			break;
+		default:
+			break; /* ToDo: proper exception */
+		}
+	}
+
+
+	//check if precomputed graph prefx is given (-g)
+	if (opt.graphfile == ""){
+		cout << "No input files given to build graph!" << endl;
+		 exit (EXIT_FAILURE);
+	}
+
+	//check if output prefix is given (-o), otherwise set default to "output"
+	if (opt.outprefix == ""){
+		cout << "No outfile prefix given, set default value 'output'" << endl;
+		//opt.prefixFilenameOut = "output";
+	}
+
+	//check if query file is given (-q)
+	if (opt.queryfile == ""){
+		cout << "No query file given to search graph!" << endl;
+		exit (EXIT_FAILURE);
+	}
+}
+
+
+
+
 
 
 vector<pair<string,string>> parseFasta(const string& queryfile){
@@ -311,28 +382,35 @@ int main(int argc, char **argv) {
 		PrintUsage();
 	} else {
 
+		const clock_t load_time = clock();
+		searchOptions opt;
+		parseArgumentsNew(argc, argv, opt);
+		ColoredCDBG<UnitigData> cdbg;
+
+		if (cdbg.read(opt.graphfile, opt.nb_threads, opt.verbose)){
+				cout << "Graph loading successful" << endl;
+		} else {
+			cout << "Graph could not be loaded! Exit." << endl;
+			exit (EXIT_FAILURE);
+		}
 
 
-		//Parse input arguments, parsing graph parameters and file specifying genome clustering
-		CCDBG_Build_opt opt;
-		string queryfile;
-		parseArguments(argc, argv, opt, queryfile);
-
+		cout << "Loading took " << (float( clock() - load_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
 		//string resultsfile = opt.prefixFilenameOut+".query";
 
 		//build the graph, done for all command variations
-		cout << "---Build de Bruijn graph with BiFrost---" << endl;
+		//cout << "---Build de Bruijn graph with BiFrost---" << endl;
 
 		//We have assemblies as input, so need the reference mode (counting singleton kmers) and want to have colors
-		opt.reference_mode = true;
-		opt.outputColors = true;
+		//opt.reference_mode = true;
+		//opt.outputColors = true;
 
 		//create cdbg instance, k=kmer length (default 31), g=length of minimizer (default 23)
-		ColoredCDBG<UnitigData> cdbg(opt.k);
-		cdbg.build(opt);
-		cdbg.simplify(opt.deleteIsolated, opt.clipTips, opt.verbose);
-		cdbg.mapColors(opt);
-		cdbg.write(opt.prefixFilenameOut, opt.nb_threads, opt.verbose);
+		//ColoredCDBG<UnitigData> cdbg(opt.k);
+		//cdbg.build(opt);
+		//cdbg.simplify(opt.deleteIsolated, opt.clipTips, opt.verbose);
+		//cdbg.mapColors(opt);
+		//cdbg.write(opt.prefixFilenameOut, opt.nb_threads, opt.verbose);
 
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -355,8 +433,10 @@ int main(int argc, char **argv) {
 		//}
 
 		//parse fasta file
-		vector<pair<string,string>> fasta = parseFasta(queryfile);
-		const int avg_genomeSize = estimate_avg_genomeSize(opt.filename_seq_in);
+		vector<pair<string,string>> fasta = parseFasta(opt.queryfile);
+		//const int avg_genomeSize = estimate_avg_genomeSize(opt.filename_seq_in);
+		const int avg_genomeSize = cdbg.size();
+		cout << avg_genomeSize << endl;
 
 
 		//!!! one thread is used by main!!!
@@ -391,7 +471,7 @@ int main(int argc, char **argv) {
 
 
 			//the main thread will take care of writing the output as soon as it is available
-			std::ofstream output(opt.prefixFilenameOut+".search",std::ofstream::binary);
+			std::ofstream output(opt.outprefix+".search",std::ofstream::binary);
 
 			mtx_writing.lock();
 			while(running > 0 || ! q.empty()){//there are still threads running
@@ -423,7 +503,7 @@ int main(int argc, char **argv) {
 		else {
 			cout << "Serial mode!" << endl;
 			run_subsample(q, cdbg, fasta, tra, 0, fasta.size()-1, avg_genomeSize);
-			std::ofstream output(opt.prefixFilenameOut+".search",std::ofstream::binary);
+			std::ofstream output(opt.outprefix+".search",std::ofstream::binary);
 			while (!q.empty()){
 				vector<searchResult> item = q.front();
 				q.pop();
@@ -438,7 +518,7 @@ int main(int argc, char **argv) {
 		}
 
 
-	cout << "Search took " << (float( clock () - begin_time ) /  CLOCKS_PER_SEC) / 100 << "sec." << endl;
+	cout << "Search took " << (float( clock () - begin_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
 	cout << "Goodbye!" << endl;
 	}
 }
