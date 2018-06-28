@@ -15,12 +15,12 @@ sns.set(style="white")
 
 input_file = sys.argv[1]
 
-df = pd.read_csv(input_file,header=0,sep='\t', dtype={'subspecies': str})
+df = pd.read_csv(input_file,header=0,sep='\t')
 
 
 
 df["query"] = df["gene"] + " " + df["query"]
-
+print(df)
 
 
 # split strain column to remove paths
@@ -51,13 +51,18 @@ subset.reindex(sorted(subset.columns), axis=1)
 
 
 # Draw the heatmap
-g = sns.heatmap(subset, cmap="Reds", vmax=1, vmin=0, square=False, cbar=False,linewidths=0.1, linecolor='black')
+sns.heatmap(subset, cmap="Reds", vmax=1, vmin=0, square=False, cbar=False,linewidths=0.1, linecolor='black')
 
 # Ajust axis labels
-g.tick_params(axis='y',labelsize=3,labelrotation=45)
-g.tick_params(axis='x',labelsize=3)
-g.set_xlabel('queried genes',fontsize=5)
-g.set_ylabel('reference strains',fontsize=5)
+ax.tick_params(axis='y',labelsize=3)
+ax.tick_params(axis='x',labelsize=3,labelrotation=45)
+ax.set_xlabel('queried genes',fontsize=5)
+ax.set_ylabel('reference strains',fontsize=5)
+ax.xaxis.tick_top()
+locs, labels = plt.yticks()
+plt.yticks(locs, df['subspecies'])
+#ax.set_yticklabels(df['subspecies'])
+
 
 
 plt.savefig("./heatmap.pdf", format="pdf")
