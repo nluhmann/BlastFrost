@@ -233,15 +233,17 @@ struct searchResult {
 
 
 
-void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, const double& db_size, const int& k, const vector<pair<string,string>>& fasta, GraphTraverser& tra, int start, int end, const string queryfile){
+void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, const double& db_size, const int& k, const vector<pair<string,string>>& fasta, GraphTraverser& tra, int start, int end, const string query){
+		running++;
 		const int sigma = 4;
 
 		if (end == 0){
 			end = fasta.size()-1;
 		}
 
+		vector<searchResult> results;
 		for(int i = start; i <= end; i++) {
-			vector<searchResult> results;
+
 			pair<string,string> seq = fasta[i];
 			unordered_map<size_t,vector<int>> res = tra.search(seq.second, k);
 			tra.remove_singletonHits(res);
@@ -272,19 +274,18 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 				}
 
 			}
+		}
 
 		//we've found all results for this query, push to writing queue!
 		mtx_queue.lock();
-		q.push(std::make_pair(queryfile,results));
+		q.push(std::make_pair(query,results));
 		mtx_queue.unlock();
-
-	}
 
 	running--;
 }
 
 
-void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, const double& db_size, const int& k, const string queryfile, GraphTraverser& tra){
+void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, const double& db_size, const int& k, const string queryfile, GraphTraverser& tra, string& outprefix){
 	running++;
 
 	const int sigma = 4;
@@ -302,6 +303,15 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 	}
 
 	string query = queryfile.substr(start, end);
+
+	//delete potentially existing search file for this query
+	string f = outprefix+"_"+query+".search";
+	if (std::remove(f.c_str()) != 0) {
+		perror("Error deleting file");
+	} else {
+		cout << "File " << f << " removed" << endl;
+	}
+
 
 	vector<searchResult> results;
 	for(auto& seq: fasta) {
@@ -351,7 +361,7 @@ void writeResults(string& outprefix, queue<pair<string,vector<searchResult>>>& q
 
 
 	mtx_writing.lock();
-	while(running > 0 || ! q.empty()){//there are still threads running
+ 	while(running > 0 || ! q.empty()){//there are still threads running
 		if (! q.empty()){
 			mtx_queue.lock();
 			pair<string,vector<searchResult>> item = q.front();
@@ -359,7 +369,7 @@ void writeResults(string& outprefix, queue<pair<string,vector<searchResult>>>& q
 			mtx_queue.unlock();
 
 			//ToDo: If we split the search for a file, we will need to append to an existing file here...
-			std::ofstream output(outprefix+"_"+item.first+".search",std::ofstream::binary);
+			std::ofstream output(outprefix+"_"+item.first+".search",std::ios_base::app);
 
 			for (auto& result : item.second){
 				string color = cdbg.getColorName(result.colorID);
@@ -429,9 +439,9 @@ int main(int argc, char **argv) {
 				//run the first t threads, then join them and start the next!
 				std::vector<thread> threadList;
 				int thread_counter = 0;
-				while (thread_counter < num_threads){
+				while (thread_counter <= num_threads){
 					if (i < opt.queryfiles.size()){
-						threadList.push_back(std::thread(run_subsample_completeQuery, std::ref(q), std::ref(db_size), std::ref(k), opt.queryfiles[i], std::ref(tra)));
+						threadList.push_back(std::thread(run_subsample_completeQuery, std::ref(q), std::ref(db_size), std::ref(k), opt.queryfiles[i], std::ref(tra), std::ref(opt.outprefix)));
 						thread_counter++;
 						i++;
 					} else {
@@ -467,7 +477,13 @@ int main(int argc, char **argv) {
 				}
 				string query = queryfile.substr(start, end);
 
-
+				//delete potentially existing search file for this query
+				string f = opt.outprefix+"_"+query+".search";
+				if (std::remove(f.c_str()) != 0) {
+					perror( "Error deleting file" );
+				} else {
+					cout << "File " << f << " removed" << endl;
+				}
 
 				vector<pair<string,string>> fasta = parseFasta(queryfile);
 				size_t bucketSize = fasta.size() / (num_threads);
@@ -487,6 +503,7 @@ int main(int argc, char **argv) {
 				}
 
 				//write the results!
+				cout << "write results!" << endl;
 				writeResults(opt.outprefix,q,cdbg);
 
 				//Join the threads with the main thread
@@ -497,7 +514,7 @@ int main(int argc, char **argv) {
 			else {
 				//we have only one thread to run, but could hav multiple query files
 				for(auto& queryfile : opt.queryfiles){
-					run_subsample_completeQuery(q, db_size, k, queryfile, tra);
+					run_subsample_completeQuery(q, db_size, k, queryfile, tra, opt.outprefix);
 					writeResults(opt.outprefix,q,cdbg);
 				}
 			}
