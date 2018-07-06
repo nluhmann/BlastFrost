@@ -27,6 +27,7 @@ using namespace std;
 
 std::mutex mtx_queue;           // mutex for critical section
 std::mutex mtx_writing;
+std::mutex mtx_deleting;
 std::atomic<int> running(0);
 
 
@@ -304,6 +305,7 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 
 	string query = queryfile.substr(start, end);
 
+	mtx_deleting.lock();
 	//delete potentially existing search file for this query
 	string f = outprefix+"_"+query+".search";
 	if (std::remove(f.c_str()) != 0) {
@@ -311,7 +313,7 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 	} else {
 		cout << "File " << f << " removed" << endl;
 	}
-
+	mtx_deleting.unlock();
 
 	vector<searchResult> results;
 	for(auto& seq: fasta) {
