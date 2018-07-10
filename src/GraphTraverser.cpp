@@ -42,44 +42,31 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) co
 	int kmer_count = 0;
 	bool first = true;
 	bool wasEmpty = false;
-	UnitigColors* old_uc;
+	UnitigColors old_uc;
 
 	for (const auto& kmer: kmers){
-		UnitigMap<DataAccessor<UnitigData>, DataStorage<UnitigData>, false> map = cdbg.find(kmer);
+		//const UnitigMap<DataAccessor<UnitigData>, DataStorage<UnitigData>, true> map = cdbg.find(kmer);
+		//const UnitigMap<DataAccessor<UnitigData>, DataStorage<UnitigData>, false>& map_ref = map;
+
+		const const_UnitigColorMap<UnitigData> map = cdbg.find(kmer);
 
 		if (! map.isEmpty) {
 			const DataAccessor<UnitigData>* da = map.getData();
-			UnitigColors* uc = da->getUnitigColors(map);
+			UnitigColors uc = da->getSubUnitigColors(map);
 
-			//ToDo: if this UnitigColors object contains the same colors as the object of the previous kmer (which is likely), then we already know whats happening!
 			if (! first) {
 				if (uc == old_uc && (! wasEmpty)){
+					cout << "copy" << endl;
 					//we can simply copy the result of the previous kmer!
 					for(auto& color : arr){
 						arr[color.first][kmer_count] = arr[color.first][kmer_count -1];
 					}
 				} else {
 					//ToDo: check these differences with Guillaume
-					for(UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); it.nextColor()) {
+					for(UnitigColors::const_iterator it = uc.begin(map); it != uc.end(); it.nextColor()) {
 						const size_t color = it.getColorID();
 						//note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
-						if (uc -> contains(map, color)){
-							std::unordered_map<size_t,vector<int>>::iterator iter = arr.find(color);
-
-							if (iter == arr.end()){
-								vector<int> vec(num_kmers, 0);
-								arr.insert({color,vec});
-							}
-							arr[color][kmer_count] = 1;
-						}
-					}
-				}
-			} else {
-				first = false;
-				for(UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); it.nextColor()) {
-					const size_t color = it.getColorID();
-					//note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
-					if (uc -> contains(map, color)){
+						//if (uc -> contains(map, color)){
 						std::unordered_map<size_t,vector<int>>::iterator iter = arr.find(color);
 
 						if (iter == arr.end()){
@@ -87,7 +74,24 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) co
 							arr.insert({color,vec});
 						}
 						arr[color][kmer_count] = 1;
+						//}
 					}
+				}
+			} else {
+				first = false;
+				for(UnitigColors::const_iterator it = uc.begin(map); it != uc.end(); it.nextColor()) {
+					const size_t color = it.getColorID();
+					//note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
+					//ToDo: QUESTION: is this even neccessary? Or could we avoid missing hits due to assembly problems by ignoring this?
+					//if (uc -> contains(map, color)){
+					std::unordered_map<size_t,vector<int>>::iterator iter = arr.find(color);
+
+					if (iter == arr.end()){
+						vector<int> vec(num_kmers, 0);
+						arr.insert({color,vec});
+					}
+					arr[color][kmer_count] = 1;
+					//}
 				}
 			}
 			old_uc = uc;

@@ -1,4 +1,3 @@
-
 #include <string>
 #include <fstream>
 #include <cstdio>
@@ -15,10 +14,6 @@
 #include <gsl/gsl_cdf.h>
 #include <gsl/gsl_randist.h>
 #include <math.h>
-
-
-
-
 
 
 using namespace std;
