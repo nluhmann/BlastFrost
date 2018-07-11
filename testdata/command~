@@ -1,0 +1,1 @@
+../my_software/BlastFrost/build/BlastFrost -v -t 1 -g yersinia_cdBG -q testquery -o outtest
