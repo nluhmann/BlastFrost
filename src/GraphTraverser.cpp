@@ -62,14 +62,11 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) co
 					}
 				} else {
 					size_t largest_color = uc.colorMax(map);
-					//cout << "largest color: " << largest_color << endl;
 					cdbg.getColorName(largest_color);
 					for(UnitigColors::const_iterator it = uc.begin(map); it != uc.end(); it.nextColor()) {
 						const size_t color = it.getColorID();
-						//cdbg.getColorName(color);
-						//cout << "color: " << color << endl;
 						//note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
-						if (uc.contains(map, color)){
+						//if (uc.contains(map, color)){
 							std::unordered_map<size_t,vector<int>>::iterator iter = arr.find(color);
 
 							if (iter == arr.end()){
@@ -77,7 +74,7 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) co
 								arr.insert({color,vec});
 							}
 							arr[color][kmer_count] = 1;
-						}
+						//}
 					}
 				}
 			} else {
@@ -86,7 +83,7 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) co
 					const size_t color = it.getColorID();
 					//note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
 					//ToDo: QUESTION: is this even neccessary? Or could we avoid missing hits due to assembly problems by ignoring this?
-					if (uc.contains(map, color)){
+					//if (uc.contains(map, color)){
 						std::unordered_map<size_t,vector<int>>::iterator iter = arr.find(color);
 
 						if (iter == arr.end()){
@@ -94,7 +91,7 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) co
 							arr.insert({color,vec});
 						}
 						arr[color][kmer_count] = 1;
-					}
+					//}
 				}
 			}
 			old_uc = uc;
