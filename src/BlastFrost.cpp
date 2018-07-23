@@ -55,6 +55,7 @@ struct searchOptions {
   size_t nb_threads = 1;
   bool verbose = false;
   string outprefix = "output";
+  int k = 31;
 } ;
 
 
@@ -63,7 +64,7 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 
 	int oc; //option character
 
-	while ((oc = getopt(argc, argv, "o:t:q:g:v")) != -1) {
+	while ((oc = getopt(argc, argv, "o:t:q:g:k:v")) != -1) {
 		switch (oc) {
 		case 'o':
 			/* handle -o, set fileprefix */
@@ -79,6 +80,9 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 			break;
 		case 'g':
 			opt.graphfile = optarg;
+			break;
+		case 'k':
+			opt.k = atoi(optarg);
 			break;
 		case 'q':
 			/* handle -g, collect query files */
@@ -173,7 +177,7 @@ string runLength_encode(const vector<int>& v){
 }
 
 
-vector<pair<string,string>> parseFasta(const string& queryfile){
+vector<pair<string,string>> parseFasta(const string& queryfile, const int& k){
 
 	//create and check input stream
 	ifstream input(queryfile);
@@ -187,10 +191,15 @@ vector<pair<string,string>> parseFasta(const string& queryfile){
 	string line;
 	string name;
 	string content;
+	int counter = 0;
 	while( std::getline(input,line).good() ){
 		if(line.empty() || line[0] == '>'){
 			if(!name.empty()){
-				fasta.push_back(std::make_pair(name,content));
+				if(content.length() >= k){
+					fasta.push_back(std::make_pair(name,content));
+				} else {
+					counter += 1;
+				}
 				name.clear();
 			}
 			if (!line.empty()){
@@ -212,6 +221,7 @@ vector<pair<string,string>> parseFasta(const string& queryfile){
 	}
 
 	input.close();
+	cout << "Number of sequences that will not be queried due to length smaller than k: " << counter << endl;
 	return fasta;
 }
 
@@ -241,8 +251,8 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 		for(int i = start; i <= end; i++) {
 
 			pair<string,string> seq = fasta[i];
-			unordered_map<size_t,vector<int>> res = tra.search(seq.second, k);
-			tra.remove_singletonHits(res);
+			unordered_map<size_t,vector<int>> res = tra.search2(seq.second, k);
+			//tra.remove_singletonHits(res);
 
 
 			for (auto& hit : res){
@@ -256,7 +266,7 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 				const long double pvalue2 = pow(10,log_pvalue);
 
 
-				if (pvalue2 <= 0.05){
+				//if (pvalue2 <= 0.05){
 
 					//create new searchResult and push to all results
 					searchResult result;
@@ -267,9 +277,16 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 					result.hitrun = hit.second;
 					results.push_back(result);
 
-				}
+				//}
 
 			}
+			if (results.size() > 30000){
+				mtx_queue.lock();
+				q.push(std::make_pair(query,results));
+				mtx_queue.unlock();
+				results.clear();
+			}
+
 		}
 
 		//we've found all results for this query, push to writing queue!
@@ -288,7 +305,7 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 
 	//ToDo: is it ok if each thread opens a different file?
 	//parse fasta file
-	vector<pair<string,string>> fasta = parseFasta(queryfile);
+	vector<pair<string,string>> fasta = parseFasta(queryfile, k);
 
 	std::string delim = "/";
 	auto start = 0U;
@@ -304,16 +321,16 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 	//delete potentially existing search file for this query
 	string f = outprefix+"_"+query+".search";
 	if (std::remove(f.c_str()) != 0) {
-		perror("Error deleting file");
+		perror("Error deleting file.");
 	} else {
-		cout << "File " << f << " removed" << endl;
+		cout << "File " << f << " removed." << endl;
 	}
 	mtx_deleting.unlock();
 
 	vector<searchResult> results;
 	for(auto& seq: fasta) {
-		unordered_map<size_t,vector<int>> res = tra.search(seq.second, k);
-		tra.remove_singletonHits(res);
+		unordered_map<size_t,vector<int>> res = tra.search2(seq.second, k);
+		//tra.remove_singletonHits(res);
 
 
 		for (auto& hit : res){
@@ -327,7 +344,7 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 			const long double pvalue2 = pow(10,log_pvalue);
 
 
-			if (pvalue2 <= 0.05){
+			if (pvalue2 <= 2){
 
 				//create new searchResult and push to all results
 				searchResult result;
@@ -353,19 +370,60 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 
 
 
-void writeResults(string& outprefix, queue<pair<string,vector<searchResult>>>& q, ColoredCDBG<UnitigData>& cdbg){
+void writeResults_singleFile(string& outprefix, string& query, queue<pair<string,vector<searchResult>>>& q, ColoredCDBG<UnitigData>& cdbg){
 	//the main thread will take care of writing the output as soon as it is available
-
+	cout << "write single file" << endl;
 
 	mtx_writing.lock();
- 	while(running > 0 || ! q.empty()){//there are still threads running
+	std::ofstream output(outprefix+"_"+query+".search",std::ios_base::app);
+
+ 	while(running > 0){//there are still threads running
 		if (! q.empty()){
 			mtx_queue.lock();
 			pair<string,vector<searchResult>> item = q.front();
 			q.pop();
 			mtx_queue.unlock();
 
-			//ToDo: If we split the search for a file, we will need to append to an existing file here...
+
+
+			for (auto& result : item.second){
+				string color = cdbg.getColorName(result.colorID);
+				output << result.query << "\t" << color << "\t" << result.pvalue << "\t";
+				string res = runLength_encode(result.hitrun);
+				output << res << endl;
+			}
+
+		}
+	}
+ 	while(! q.empty()){ //there is still data to write, but we do not need to lock anymore...
+ 		pair<string,vector<searchResult>> item = q.front();
+ 		q.pop();
+ 		for (auto& result : item.second){
+ 			string color = cdbg.getColorName(result.colorID);
+ 			output << result.query << "\t" << color << "\t" << result.pvalue << "\t";
+ 			string res = runLength_encode(result.hitrun);
+ 			output << res << endl;
+ 		}
+ 	}
+ 	output.close();
+	mtx_writing.unlock();
+}
+
+
+void writeResults_multipleFiles(string& outprefix, queue<pair<string,vector<searchResult>>>& q, ColoredCDBG<UnitigData>& cdbg){
+	//the main thread will take care of writing the output as soon as it is available
+
+
+	mtx_writing.lock();
+
+
+ 	while(running > 0){//there are still threads running
+		if (! q.empty()){
+			mtx_queue.lock();
+			pair<string,vector<searchResult>> item = q.front();
+			q.pop();
+			mtx_queue.unlock();
+
 			std::ofstream output(outprefix+"_"+item.first+".search",std::ios_base::app);
 
 			for (auto& result : item.second){
@@ -374,9 +432,23 @@ void writeResults(string& outprefix, queue<pair<string,vector<searchResult>>>& q
 				string res = runLength_encode(result.hitrun);
 				output << res << endl;
 			}
-			output.close();
+		 	output.close();
+
 		}
 	}
+ 	while(! q.empty()){ //there is still data to write, but we do not need to lock anymore...
+ 		pair<string,vector<searchResult>> item = q.front();
+ 		q.pop();
+ 		std::ofstream output(outprefix+"_"+item.first+".search",std::ios_base::app);
+ 		for (auto& result : item.second){
+ 			string color = cdbg.getColorName(result.colorID);
+ 			output << result.query << "\t" << color << "\t" << result.pvalue << "\t";
+ 			string res = runLength_encode(result.hitrun);
+ 			output << res << endl;
+ 		}
+ 		output.close();
+ 	}
+
 	mtx_writing.unlock();
 }
 
@@ -392,7 +464,9 @@ int main(int argc, char **argv) {
 		const clock_t load_time = clock();
 		searchOptions opt;
 		parseArgumentsNew(argc, argv, opt);
-		ColoredCDBG<UnitigData> cdbg;
+
+		//ToDo: for input parameter k, build graph with g=k-8
+		ColoredCDBG<UnitigData> cdbg(opt.k,opt.k-8);
 
 		if (cdbg.read(opt.graphfile, opt.nb_threads, opt.verbose)){
 				cout << "Graph loading successful" << endl;
@@ -447,7 +521,7 @@ int main(int argc, char **argv) {
 				}
 
 				//write the results!
-				writeResults(opt.outprefix,q,cdbg);
+				writeResults_multipleFiles(opt.outprefix,q,cdbg);
 
 				//Join the threads with the main thread
 				for (auto& thread : threadList) {
@@ -482,7 +556,7 @@ int main(int argc, char **argv) {
 					cout << "File " << f << " removed" << endl;
 				}
 
-				vector<pair<string,string>> fasta = parseFasta(queryfile);
+				vector<pair<string,string>> fasta = parseFasta(queryfile, opt.k);
 				size_t bucketSize = fasta.size() / (num_threads);
 				size_t leftOvers = fasta.size() % (num_threads);
 
@@ -500,8 +574,8 @@ int main(int argc, char **argv) {
 				}
 
 				//write the results!
-				cout << "write results!" << endl;
-				writeResults(opt.outprefix,q,cdbg);
+				cout << "Start writing..." << endl;
+				writeResults_singleFile(opt.outprefix,query,q,cdbg);
 
 				//Join the threads with the main thread
 				for (auto& thread : threadList) {
@@ -509,10 +583,10 @@ int main(int argc, char **argv) {
 				}
 			}
 			else {
-				//we have only one thread to run, but could hav multiple query files
+				//we have only one thread to run, but could have multiple query files
 				for(auto& queryfile : opt.queryfiles){
 					run_subsample_completeQuery(q, db_size, k, queryfile, tra, opt.outprefix);
-					writeResults(opt.outprefix,q,cdbg);
+					writeResults_multipleFiles(opt.outprefix,q,cdbg);
 				}
 			}
 		}

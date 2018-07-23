@@ -21,6 +21,7 @@
 #include <iterator>
 #include <set>
 #include <fstream>
+#include <mutex>
 
 #include <gsl/gsl_cdf.h>
 #include <math.h>
@@ -38,7 +39,9 @@ public:
 
 	GraphTraverser(ColoredCDBG<UnitigData>& cdbg);
 
-	unordered_map<size_t,vector<int>> search(string query, int k) const;
+	//unordered_map<size_t,vector<int>> search(string query, int k) const;
+
+	unordered_map<size_t,vector<int>> search2(string query, int k);
 
 	//void writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile);
 
@@ -59,6 +62,10 @@ public:
 	long double compute_log_evalue(const int& score, const double& db_size, const int& n) const;
 
 	long double compute_log_pvalue(const long double& log_evalue) const;
+
+	vector<string> compute_neighborhood(string kmer_str, int d);
+
+	void searchNextRow(string v, string& word, vector<int> lastRow, vector<string>& neighborhood, vector<char>& alphabet, int& d);
 
 };
 

@@ -22,7 +22,57 @@ GraphTraverser::GraphTraverser(ColoredCDBG<UnitigData>& graph) :
 
 
 
-unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) const{
+//unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) const{
+//
+//	vector<Kmer> kmers;
+//
+//	//split query into sequence of kmers (!!! query can contain a kmer multiple times, do not change the order of the kmers at this point!)
+//	for(int i = 0; i< (query.length()-k+1); ++i){
+//	    const string kmer = query.substr(i,k);
+//	    const char *cstr = kmer.c_str();
+//	    Kmer next(cstr);
+//	    kmers.push_back(next);
+//	}
+//
+//	const size_t num_kmers = kmers.size();
+//
+//	unordered_map<size_t,vector<int>> arr;
+//
+//	//search each kmer in cdbg and return color set
+//	int kmer_count = 0;
+//	bool first = true;
+//	bool wasEmpty = false;
+//
+//	for (const auto& kmer: kmers){
+//
+//		const const_UnitigColorMap<UnitigData> map = cdbg.find(kmer);
+//
+//		if (! map.isEmpty) {
+//			const DataAccessor<UnitigData>* da = map.getData();
+//			UnitigColors uc = da->getSubUnitigColors(map);
+//			UnitigMap<UnitigData> newmap(0, 1, Kmer::k, map.strand);
+//			for(UnitigColors::const_iterator it = uc.begin(newmap); it != uc.end(); ++it) {
+//				const size_t color = it.getColorID();
+//				//note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
+//				//if (uc.contains(map, color)){
+//				std::unordered_map<size_t,vector<int>>::iterator iter = arr.find(color);
+//
+//				if (iter == arr.end()){
+//					vector<int> vec(num_kmers, 0);
+//					arr.insert({color,vec});
+//				}
+//				arr[color][kmer_count] = 1;
+//						//}
+//			}
+//
+//		}
+//		kmer_count++;
+//	}
+//	return arr;
+//}
+
+
+unordered_map<size_t,vector<int>> GraphTraverser::search2(string query, int k){
 
 	vector<Kmer> kmers;
 
@@ -34,6 +84,17 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) co
 	    kmers.push_back(next);
 	}
 
+	//test neighborhood function!
+	string test = "ACCA";
+	vector<string> neighborhood = compute_neighborhood(test, 1);
+	cout << "Neighbohood of: " << test << endl;
+	for (auto& elem: neighborhood){
+		cout << elem << endl;
+	}
+
+
+
+
 	const size_t num_kmers = kmers.size();
 
 	unordered_map<size_t,vector<int>> arr;
@@ -42,18 +103,16 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) co
 	int kmer_count = 0;
 	bool first = true;
 	bool wasEmpty = false;
-	UnitigColors old_uc;
+	UnitigColors* old_uc;
 
 	for (const auto& kmer: kmers){
-		//const UnitigMap<DataAccessor<UnitigData>, DataStorage<UnitigData>, true> map = cdbg.find(kmer);
-		//const UnitigMap<DataAccessor<UnitigData>, DataStorage<UnitigData>, false>& map_ref = map;
-
-		const const_UnitigColorMap<UnitigData> map = cdbg.find(kmer);
+		UnitigMap<DataAccessor<UnitigData>, DataStorage<UnitigData>, false> map = cdbg.find(kmer);
 
 		if (! map.isEmpty) {
 			const DataAccessor<UnitigData>* da = map.getData();
-			UnitigColors uc = da->getSubUnitigColors(map);
+			UnitigColors* uc = da->getUnitigColors(map);
 
+			//ToDo: if this UnitigColors object contains the same colors as the object of the previous kmer (which is likely), then we already know whats happening!
 			if (! first) {
 				if (uc == old_uc && (! wasEmpty)){
 					//we can simply copy the result of the previous kmer!
@@ -61,12 +120,14 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) co
 						arr[color.first][kmer_count] = arr[color.first][kmer_count -1];
 					}
 				} else {
-					size_t largest_color = uc.colorMax(map);
-					cdbg.getColorName(largest_color);
-					for(UnitigColors::const_iterator it = uc.begin(map); it != uc.end(); it.nextColor()) {
+					//ToDo: check these differences with Guillaume
+					//for(UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); it.nextColor()) {
+					for (UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); ++it) {
+
 						const size_t color = it.getColorID();
 						//note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
-						//if (uc.contains(map, color)){
+						//if (uc -> contains(map, color)){
+						if (it.getKmerPosition() == map.dist){
 							std::unordered_map<size_t,vector<int>>::iterator iter = arr.find(color);
 
 							if (iter == arr.end()){
@@ -74,16 +135,17 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) co
 								arr.insert({color,vec});
 							}
 							arr[color][kmer_count] = 1;
-						//}
+						}
 					}
 				}
 			} else {
 				first = false;
-				for(UnitigColors::const_iterator it = uc.begin(map); it != uc.end(); it.nextColor()) {
+				//for(UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); it.nextColor()) {
+				for (UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); ++it) {
 					const size_t color = it.getColorID();
 					//note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
-					//ToDo: QUESTION: is this even neccessary? Or could we avoid missing hits due to assembly problems by ignoring this?
-					//if (uc.contains(map, color)){
+					//if (uc -> contains(map, color)){
+					if (it.getKmerPosition() == map.dist){
 						std::unordered_map<size_t,vector<int>>::iterator iter = arr.find(color);
 
 						if (iter == arr.end()){
@@ -91,7 +153,7 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) co
 							arr.insert({color,vec});
 						}
 						arr[color][kmer_count] = 1;
-					//}
+					}
 				}
 			}
 			old_uc = uc;
@@ -102,6 +164,59 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k) co
 		kmer_count++;
 	}
 	return arr;
+}
+
+
+
+vector<string> GraphTraverser::compute_neighborhood(string kmer_str, int d){
+	vector<char> alphabet = {'A','C'};
+	vector<string> neighborhood;
+	//string kmer_str = kmer.toString();
+	vector<int> firstRow;
+	for (int i = 0; i <= kmer_str.size(); ++i){
+		firstRow.push_back(i);
+	}
+
+	GraphTraverser::searchNextRow("", kmer_str, firstRow, neighborhood, alphabet,d);
+
+	return neighborhood;
+
+}
+
+void GraphTraverser::searchNextRow(string v, string& word, vector<int> lastRow, vector<string>& neighborhood, vector<char>& alphabet, int& d){
+	int min = *(std::min_element(lastRow.begin(), lastRow.end()));
+	if (min == d){
+		int counter = word.size();
+		for(auto& elem : lastRow){
+			if (elem == d){
+				//report v*w^x
+				int pos = word.size() - counter;
+				string suffix = word.substr(pos);
+				neighborhood.push_back(v+suffix);
+			}
+			counter--;
+		}
+	} else if(min < d){
+		for (char a : alphabet){
+			vector<int> nextRow;
+			//first entry can only be an insert
+			nextRow.push_back(lastRow[0]+1);
+			const char* str = word.c_str();
+			for(int i = 1; i< lastRow.size(); ++i){
+				int ins = lastRow[i]+1;
+				int del = nextRow[i-1]+1;
+				int sub;
+				if (str[i-1] == a){
+					sub = lastRow[i-1];
+				} else {
+					sub = lastRow[i-1]+1;
+				}
+				nextRow.push_back(std::min(std::min(ins, del), sub));
+			}
+			string next = v+a;
+			GraphTraverser::searchNextRow(next,word,nextRow,neighborhood,alphabet,d);
+		}
+	}
 }
 
 
