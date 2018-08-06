@@ -1,8 +1,8 @@
 # BlastFrost
 
-Requirements:
-https://www.gnu.org/software/gsl/
+## Requirements:
+* https://www.gnu.org/software/gsl/
 
 
-Install:
+## Install:
 mkdir build; cd build; cmake ..; make
