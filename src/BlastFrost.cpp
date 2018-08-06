@@ -5,6 +5,7 @@
 #include <queue>
 #include <mutex>
 #include <atomic>
+#include <unordered_map>
 
 #include <bifrost/ColoredCDBG.hpp>
 #include "GraphTraverser.hpp"
@@ -28,14 +29,14 @@ std::atomic<int> running(0);
 
 
 void PrintUsage() {
-	cout << "BlastFrost -f <inputFiles> -q <query_sequences> -o <outfile_prefix> " << endl << endl;
+	cout << "BlastFrost -g <BifrostGraph> -q <query_sequences> -o <outfile_prefix> " << endl << endl;
 
 	cout << "Mandatory parameters with required argument:" << endl << endl
-			<< "  -f,         Input sequence files (FASTA or FASTQ, possibly gziped) and/or graph files (GFA)"
+			<< "  -g,         Input Bifrost graph prefix"
 			<< endl
 			<< "  -q,         Query sequences (multiple FASTA)"
 			<< endl
-			<< "  -o,         Prefix for output files (default: 'output')"
+			<< "  -o,         Prefix for search result files (default: 'output')"
 
 			<< endl << endl << "Optional parameters:"<< endl << endl
 			<< "  -t,             Number of threads (default is 1)"
@@ -43,6 +44,10 @@ void PrintUsage() {
 			<< "  -k,             Length of k-mers (default is 31, max. is 31)"
 			<< endl
 			<< "  -i,           Clip tips shorter than k k-mers in length"
+			<< endl
+			<< "  -d,           Compute and search d-neighborhood of queried k-mers"
+			<< endl
+			<< "  -c,           Enhance gfa file with color information, option can be run without a query search."
 			<< endl
 			<< "  -v,             Print information messages during construction"
 			<< endl << endl;
@@ -56,6 +61,8 @@ struct searchOptions {
   bool verbose = false;
   string outprefix = "output";
   int k = 31;
+  int d = 0;
+  bool enhanceGFA = false;
 } ;
 
 
@@ -64,7 +71,7 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 
 	int oc; //option character
 
-	while ((oc = getopt(argc, argv, "o:t:q:g:k:v")) != -1) {
+	while ((oc = getopt(argc, argv, "o:t:q:g:k:d:vc")) != -1) {
 		switch (oc) {
 		case 'o':
 			/* handle -o, set fileprefix */
@@ -78,11 +85,17 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 			//handle -v, verbose mode
 			opt.verbose = true;
 			break;
+		case 'c':
+			opt.enhanceGFA = true;
+			break;
 		case 'g':
 			opt.graphfile = optarg;
 			break;
 		case 'k':
 			opt.k = atoi(optarg);
+			break;
+		case 'd':
+			opt.d = atoi(optarg);
 			break;
 		case 'q':
 			/* handle -g, collect query files */
@@ -109,17 +122,102 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 	}
 
 	//check if output prefix is given (-o), otherwise set default to "output"
-	if (opt.outprefix == ""){
+	if (opt.outprefix == "" && ! opt.enhanceGFA){
 		cout << "No outfile prefix given, set default value 'output'" << endl;
 		//opt.prefixFilenameOut = "output";
 	}
 
 	//check if query file is given (-q)
-	if (opt.queryfiles.empty()){
+	if (opt.queryfiles.empty() && ! opt.enhanceGFA){
 		cout << "No query files given to search graph!" << endl;
 		exit (EXIT_FAILURE);
 	}
 }
+
+
+int augmentGFA(GraphTraverser& tra, string& gfaPrefix, const size_t& num_colors){
+	// open gfa, read line by line, immadiately write to augmented file
+
+	std::ofstream output(gfaPrefix+"_colored.gfa",std::ofstream::binary);
+	cout << "Initialized output file" << endl;
+
+	ifstream input(gfaPrefix+".gfa");
+	if(!input.good()){
+		cout << "Cannot open gfa graph file." << endl;
+		exit (EXIT_FAILURE);
+	}
+
+	unordered_map<string,int> colorHash;
+	unordered_map<int,string> indexHash;
+	int largest = 0;
+	string line;
+	while( std::getline(input,line).good() ){
+		if( (! line.empty()) && line[0] == 'S'){
+			//assumption: each S line has the same fields: S \t ID \t SEQ \t DZ-Tag
+			vector<string> line_arr;
+			string delim = "\t";
+			size_t pos = 0;
+
+			auto start = 0U;
+			auto end = line.find(delim);
+			string sub;
+			while (end != std::string::npos) {
+				//std::cout << s.substr(start, end - start) << std::endl;
+				sub = line.substr(start, end - start);
+				start = end + delim.length();
+				end = line.find(delim, start);
+				line_arr.push_back(sub);
+			}
+
+			sub = line.substr(start, end - start);
+			line_arr.push_back(sub);
+
+
+
+
+			vector<string> colors = tra.getColors(line_arr[2]);
+			vector<bool> bset(num_colors, 0);
+			for (auto& color: colors){
+				if (colorHash.find(color) != colorHash.end()) {
+					bset[colorHash[color]] = 1;
+				} else {
+					colorHash[color] = largest;
+					indexHash[largest] = color;
+					bset[largest] = 1;
+					largest++;
+				}
+			}
+			ostringstream os;
+			copy(bset.begin(), bset.end(), ostream_iterator<bool>(os, ""));
+
+			line_arr.push_back("CO:Z:"+os.str());
+
+
+			//write augmented line to output
+			output << line_arr[0] << "\t" << line_arr[1] << "\t" << line_arr[2] << "\t" << line_arr[3] << "\t" << line_arr[4] << endl;
+
+		} else {
+			//write line directly to output
+			output << line << endl;
+		}
+
+	}
+
+	input.close();
+	output.close();
+
+	//write the color index to separate file
+	std::ofstream index(gfaPrefix+".index",std::ofstream::binary);
+	std::map<int, string> ordered(indexHash.begin(), indexHash.end());
+	for(auto it = ordered.begin(); it != ordered.end(); ++it){
+	     index << it->second << " ";
+	}
+
+	index.close();
+
+}
+
+
 
 
 
@@ -142,36 +240,25 @@ int estimate_avg_genomeSize(const vector<string>& files){
 
 
 string runLength_encode(const vector<int>& v){
-	int cnt1 = 0;
-	int cnt0 = 0;
+	int cnt = 0;
 	string res;
 	string n;
+	int lastElem = 3;
 	for (auto& elem : v){
-		if (elem == 1){
-			if (cnt1 == 0 && cnt0 != 0){
-				//we start a new run of 1's
-				n = "0:"+std::to_string(cnt0)+",";
-				res += n;
-				cnt0 = 0;
-			}
-			cnt1++;
-		} else if (elem == 0){
-			if (cnt0 == 0 && cnt1 != 0){
-				//we start a new run of 0's
-				n = "1:"+std::to_string(cnt1)+",";
-				res += n;
-				cnt1 = 0;
-			}
-			cnt0++;
+		if (elem == lastElem){
+			cnt++;
 		} else {
-			cout << "ERROR" << endl;
+			//start a new run
+			if (lastElem != 3){
+				n = std::to_string(lastElem)+":"+std::to_string(cnt)+",";
+				res+= n;
+			}
+			cnt = 1;
+			lastElem = elem;
 		}
 	}
-	if (cnt0 != 0){
-		n = "0:"+std::to_string(cnt0)+",";
-	} else {
-		n = "1:"+std::to_string(cnt1)+",";
-	}
+
+	n = std::to_string(lastElem)+":"+std::to_string(cnt)+",";
 	res += n;
 	return res;
 }
@@ -239,7 +326,7 @@ struct searchResult {
 
 
 
-void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, const double& db_size, const int& k, const vector<pair<string,string>>& fasta, GraphTraverser& tra, int start, int end, const string query){
+void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, const double& db_size, const int& k, const int& d, const vector<pair<string,string>>& fasta, GraphTraverser& tra, int start, int end, const string query){
 		running++;
 		const int sigma = 4;
 
@@ -251,7 +338,7 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 		for(int i = start; i <= end; i++) {
 
 			pair<string,string> seq = fasta[i];
-			unordered_map<size_t,vector<int>> res = tra.search2(seq.second, k);
+			unordered_map<size_t,vector<int>> res = tra.search(seq.second, k, d);
 			//tra.remove_singletonHits(res);
 
 
@@ -298,7 +385,7 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 }
 
 
-void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, const double& db_size, const int& k, const string queryfile, GraphTraverser& tra, string& outprefix){
+void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, const double& db_size, const int& k, const int& d, const string queryfile, GraphTraverser& tra, string& outprefix){
 	running++;
 
 	const int sigma = 4;
@@ -329,7 +416,7 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 
 	vector<searchResult> results;
 	for(auto& seq: fasta) {
-		unordered_map<size_t,vector<int>> res = tra.search2(seq.second, k);
+		unordered_map<size_t,vector<int>> res = tra.search(seq.second, k, d);
 		//tra.remove_singletonHits(res);
 
 
@@ -476,16 +563,22 @@ int main(int argc, char **argv) {
 		}
 
 
-		cout << "Loading took " << (float( clock() - load_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
+		//cout << "Loading took " << (float( clock() - load_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
 
 
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		const clock_t begin_time = clock();
 
+		GraphTraverser tra(cdbg);
+		if (opt.enhanceGFA){
+
+			augmentGFA(tra,opt.graphfile,cdbg.getNbColors());
+		} else {
+
 
 		cout << "---Query graph for input sequences---" << endl;
-		GraphTraverser tra(cdbg);
+
 
 		//const int avg_genomeSize = estimate_avg_genomeSize(opt.filename_seq_in);
 		const int avg_genomeSize = cdbg.size();
@@ -512,7 +605,7 @@ int main(int argc, char **argv) {
 				int thread_counter = 0;
 				while (thread_counter <= num_threads){
 					if (i < opt.queryfiles.size()){
-						threadList.push_back(std::thread(run_subsample_completeQuery, std::ref(q), std::ref(db_size), std::ref(k), opt.queryfiles[i], std::ref(tra), std::ref(opt.outprefix)));
+						threadList.push_back(std::thread(run_subsample_completeQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), opt.queryfiles[i], std::ref(tra), std::ref(opt.outprefix)));
 						thread_counter++;
 						i++;
 					} else {
@@ -565,10 +658,10 @@ int main(int argc, char **argv) {
 
 				for(int i = 0; i <= fasta.size(); i=i+bucketSize) {
 					if (thread_counter+1 < num_threads){
-						threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(fasta),  std::ref(tra), i, (i+bucketSize-1),query));
+						threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(tra), i, (i+bucketSize-1),query));
 						thread_counter++;
 					} else {
-						threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(fasta),  std::ref(tra),i,0,query));
+						threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(tra),i,0,query));
 						break;
 					}
 				}
@@ -585,7 +678,7 @@ int main(int argc, char **argv) {
 			else {
 				//we have only one thread to run, but could have multiple query files
 				for(auto& queryfile : opt.queryfiles){
-					run_subsample_completeQuery(q, db_size, k, queryfile, tra, opt.outprefix);
+					run_subsample_completeQuery(q, db_size, k, opt.d, queryfile, tra, opt.outprefix);
 					writeResults_multipleFiles(opt.outprefix,q,cdbg);
 				}
 			}
@@ -593,8 +686,9 @@ int main(int argc, char **argv) {
 
 
 
-	cout << "Search took " << (float( clock () - begin_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
+	//cout << "Search took " << (float( clock () - begin_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
 	cout << "Goodbye!" << endl;
+	}
 	}
 }
 

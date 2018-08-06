@@ -39,9 +39,7 @@ public:
 
 	GraphTraverser(ColoredCDBG<UnitigData>& cdbg);
 
-	//unordered_map<size_t,vector<int>> search(string query, int k) const;
-
-	unordered_map<size_t,vector<int>> search2(string query, int k);
+	unordered_map<size_t,vector<int>> search(string query, int k, int ndistance);
 
 	//void writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile);
 
@@ -63,9 +61,14 @@ public:
 
 	long double compute_log_pvalue(const long double& log_evalue) const;
 
-	vector<string> compute_neighborhood(string kmer_str, int d);
+	vector<Kmer> compute_neighborhood(string kmer_str, int d);
 
-	void searchNextRow(string v, string& word, vector<int> lastRow, vector<string>& neighborhood, vector<char>& alphabet, int& d);
+	void searchNextRow(string v, string& word, vector<int> lastRow, vector<Kmer>& neighborhood, vector<char>& alphabet, int& d);
+
+	/*
+	 * Find the unitig that corresponds to this string, and report all colors of this unitig
+	 */
+	vector<string> getColors(const string& u);
 
 };
 
