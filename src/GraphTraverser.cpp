@@ -354,7 +354,7 @@ vector<string> GraphTraverser::getColors(const string& u){
 	const char *cstr = kmer.c_str();
 	Kmer head(cstr);
 
-	UnitigMap<DataAccessor<UnitigData>, DataStorage<UnitigData>, false> map = cdbg.find(head);
+	UnitigMap<DataAccessor<UnitigData>, DataStorage<UnitigData>, false> map = cdbg.find(head,true);
 
 	if (! map.isEmpty) {
 		const DataAccessor<UnitigData>* da = map.getData();
