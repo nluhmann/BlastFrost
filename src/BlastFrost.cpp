@@ -393,6 +393,7 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 	//ToDo: is it ok if each thread opens a different file?
 	//parse fasta file
 	vector<pair<string,string>> fasta = parseFasta(queryfile, k);
+	cout << "Fasta parsed" << endl;
 
 	std::string delim = "/";
 	auto start = 0U;
@@ -416,6 +417,7 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 
 	vector<searchResult> results;
 	for(auto& seq: fasta) {
+		cout << seq.second << endl;
 		unordered_map<size_t,vector<int>> res = tra.search(seq.second, k, d);
 		//tra.remove_singletonHits(res);
 
@@ -650,8 +652,10 @@ int main(int argc, char **argv) {
 				}
 
 				vector<pair<string,string>> fasta = parseFasta(queryfile, opt.k);
+				cout << "Read fasta" << endl;
 				size_t bucketSize = fasta.size() / (num_threads);
 				size_t leftOvers = fasta.size() % (num_threads);
+				cout << "comp bucket size" << endl;
 
 				int thread_counter = 0;
 				std::vector<thread> threadList;

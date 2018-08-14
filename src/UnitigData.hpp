@@ -18,12 +18,15 @@ class UnitigData : public CCDBG_Data_t<UnitigData>, CDBG_Data_t<UnitigData> {
 
 		UnitigData();
 
+		void clear(const UnitigColorMap<UnitigData>&  um_dest);
+
         // Join method for ColoredCDBG
-        static void join(const UnitigColorMap<UnitigData>& um_dest, const UnitigColorMap<UnitigData>& um_src);
+		void concat(const UnitigColorMap<UnitigData>& um_dest, const UnitigColorMap<UnitigData>& um_src);
 
         // Sub method for ColoredCDBG
-        static void sub(UnitigData* new_data, const UnitigColors& uc_dest, const UnitigMapBase& um_dest,
-        		const UnitigColorMap<UnitigData>& um_src, const bool last_extraction);
+		void extract(const UnitigColors* uc_dest, const UnitigColorMap<UnitigData>& um_src, const bool last_extraction );
+
+		void merge(const UnitigColors& uc_dest, const UnitigColorMap<UnitigData>& um_dest, const const_UnitigColorMap<UnitigData> & um_src);
 
         void toString() const;
 
