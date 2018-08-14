@@ -26,7 +26,6 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k, in
 
 	vector<Kmer> kmers;
 
-	cout << "Start search" << endl;
 	//split query into sequence of kmers (!!! query can contain a kmer multiple times, do not change the order of the kmers at this point!)
 	for(int i = 0; i< (query.length()-k+1); ++i){
 	    const string kmer = query.substr(i,k);
@@ -35,7 +34,6 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k, in
 	    kmers.push_back(next);
 	}
 
-	cout << "Created kmers" << endl;
 	//test neighborhood function!
 //	string test = "ACCA";
 //	vector<string> neighborhood = compute_neighborhood(test, 1);
@@ -55,7 +53,6 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k, in
 	UnitigColors* old_uc;
 
 	for (const auto& kmer: kmers){
-		cout << kmer.toString() << endl;
 		UnitigColorMap<UnitigData> map = cdbg.find(kmer);
 
 		if (! map.isEmpty) {
@@ -79,17 +76,10 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k, in
 
 			if (! copy) {
 				first = false;
-				cout << "iterate colors" << endl;
-				cout << uc->getSizeInBytes() << endl;
-				if (uc->isEmpty()){
-					cout << "empty colors" << endl;
-				} else {
-					cout << "we have colors" << endl;
-				}
+
 				for(UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); it.nextColor()) {
 				//for (UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); ++it) {
 					const size_t color = it.getColorID();
-					cout << color << endl;
 
 					if (uc -> contains(map, color)){ //note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
 

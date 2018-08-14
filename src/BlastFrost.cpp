@@ -393,7 +393,6 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 	//ToDo: is it ok if each thread opens a different file?
 	//parse fasta file
 	vector<pair<string,string>> fasta = parseFasta(queryfile, k);
-	cout << "Fasta parsed" << endl;
 
 	std::string delim = "/";
 	auto start = 0U;
@@ -417,7 +416,6 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 
 	vector<searchResult> results;
 	for(auto& seq: fasta) {
-		cout << seq.second << endl;
 		unordered_map<size_t,vector<int>> res = tra.search(seq.second, k, d);
 		//tra.remove_singletonHits(res);
 
@@ -564,145 +562,133 @@ int main(int argc, char **argv) {
 			exit (EXIT_FAILURE);
 		}
 
-		int nullcounter = 0;
-		for (auto& unitig : cdbg) {
-			DataAccessor<UnitigData>* da = unitig.getData();
-			UnitigColors* uc = da->getUnitigColors(unitig);
-			if (uc == nullptr){
-				cout << "NULL" << endl;
-				nullcounter += 1;
-			}
-		}
 
-		cout << "Nullcounter: "+nullcounter << endl;
 		//cout << "Loading took " << (float( clock() - load_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
 
 
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//		const clock_t begin_time = clock();
-//
-//		GraphTraverser tra(cdbg);
-//		if (opt.enhanceGFA){
-//
-//			augmentGFA(tra,opt.graphfile,cdbg.getNbColors());
-//		} else {
-//
-//
-//		cout << "---Query graph for input sequences---" << endl;
-//
-//
-//		//const int avg_genomeSize = estimate_avg_genomeSize(opt.filename_seq_in);
-//		const int avg_genomeSize = cdbg.size();
-//		cout << avg_genomeSize << endl;
-//		const size_t numberStrains = cdbg.getNbColors();
-//		double db_size = numberStrains*avg_genomeSize;
-//
-//		int k = cdbg.getK();
-//
-//		//!!! one thread is used by main!!!
-//		size_t num_threads = opt.nb_threads - 1;
-//
-//		queue<pair<string,vector<searchResult>>> q;
-//
-//		//two possibilities: if number of query files given > number of threads, run each query file in a different thread
-//		//otherwise: distribute threads to query files, split given query file over assigned threads evenly
-//
-//		if(opt.queryfiles.size() > 1 && num_threads > 0){
-//
-//			int i = 0;
-//			while (i < opt.queryfiles.size()-1){
-//				//run the first t threads, then join them and start the next!
-//				std::vector<thread> threadList;
-//				int thread_counter = 0;
-//				while (thread_counter <= num_threads){
-//					if (i < opt.queryfiles.size()){
-//						threadList.push_back(std::thread(run_subsample_completeQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), opt.queryfiles[i], std::ref(tra), std::ref(opt.outprefix)));
-//						thread_counter++;
-//						i++;
-//					} else {
-//						break;
-//					}
-//				}
-//
-//				//write the results!
-//				writeResults_multipleFiles(opt.outprefix,q,cdbg);
-//
-//				//Join the threads with the main thread
-//				for (auto& thread : threadList) {
-//					thread.join();
-//				}
-//
-//
-//			}
-//		} else {
-//			//split files and stuff!
-//
-//
-//
-//			if (num_threads > 0){
-//				//parse fasta file
-//				string queryfile = opt.queryfiles[0];
-//
-//				std::string delim = "/";
-//				auto start = 0U;
-//				auto end = queryfile.find(delim);
-//				while (end != std::string::npos){
-//					start = end + delim.length();
-//					end = queryfile.find(delim, start);
-//				}
-//				string query = queryfile.substr(start, end);
-//
-//				//delete potentially existing search file for this query
-//				string f = opt.outprefix+"_"+query+".search";
-//				if (std::remove(f.c_str()) != 0) {
-//					perror( "Error deleting file" );
-//				} else {
-//					cout << "File " << f << " removed" << endl;
-//				}
-//
-//				vector<pair<string,string>> fasta = parseFasta(queryfile, opt.k);
-//				cout << "Read fasta" << endl;
-//				size_t bucketSize = fasta.size() / (num_threads);
-//				size_t leftOvers = fasta.size() % (num_threads);
-//				cout << "comp bucket size" << endl;
-//
-//				int thread_counter = 0;
-//				std::vector<thread> threadList;
-//
-//				for(int i = 0; i <= fasta.size(); i=i+bucketSize) {
-//					if (thread_counter+1 < num_threads){
-//						threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(tra), i, (i+bucketSize-1),query));
-//						thread_counter++;
-//					} else {
-//						threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(tra),i,0,query));
-//						break;
-//					}
-//				}
-//
-//				//write the results!
-//				cout << "Start writing..." << endl;
-//				writeResults_singleFile(opt.outprefix,query,q,cdbg);
-//
-//				//Join the threads with the main thread
-//				for (auto& thread : threadList) {
-//					thread.join();
-//				}
-//			}
-//			else {
-//				//we have only one thread to run, but could have multiple query files
-//				for(auto& queryfile : opt.queryfiles){
-//					run_subsample_completeQuery(q, db_size, k, opt.d, queryfile, tra, opt.outprefix);
-//					writeResults_multipleFiles(opt.outprefix,q,cdbg);
-//				}
-//			}
-//		}
-//
+		const clock_t begin_time = clock();
+
+		GraphTraverser tra(cdbg);
+		if (opt.enhanceGFA){
+
+			augmentGFA(tra,opt.graphfile,cdbg.getNbColors());
+		} else {
+
+
+		cout << "---Query graph for input sequences---" << endl;
+
+
+		//const int avg_genomeSize = estimate_avg_genomeSize(opt.filename_seq_in);
+		const int avg_genomeSize = cdbg.size();
+		cout << avg_genomeSize << endl;
+		const size_t numberStrains = cdbg.getNbColors();
+		double db_size = numberStrains*avg_genomeSize;
+
+		int k = cdbg.getK();
+
+		//!!! one thread is used by main!!!
+		size_t num_threads = opt.nb_threads - 1;
+
+		queue<pair<string,vector<searchResult>>> q;
+
+		//two possibilities: if number of query files given > number of threads, run each query file in a different thread
+		//otherwise: distribute threads to query files, split given query file over assigned threads evenly
+
+		if(opt.queryfiles.size() > 1 && num_threads > 0){
+
+			int i = 0;
+			while (i < opt.queryfiles.size()-1){
+				//run the first t threads, then join them and start the next!
+				std::vector<thread> threadList;
+				int thread_counter = 0;
+				while (thread_counter <= num_threads){
+					if (i < opt.queryfiles.size()){
+						threadList.push_back(std::thread(run_subsample_completeQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), opt.queryfiles[i], std::ref(tra), std::ref(opt.outprefix)));
+						thread_counter++;
+						i++;
+					} else {
+						break;
+					}
+				}
+
+				//write the results!
+				writeResults_multipleFiles(opt.outprefix,q,cdbg);
+
+				//Join the threads with the main thread
+				for (auto& thread : threadList) {
+					thread.join();
+				}
+
+
+			}
+		} else {
+			//split files and stuff!
+
+
+
+			if (num_threads > 0){
+				//parse fasta file
+				string queryfile = opt.queryfiles[0];
+
+				std::string delim = "/";
+				auto start = 0U;
+				auto end = queryfile.find(delim);
+				while (end != std::string::npos){
+					start = end + delim.length();
+					end = queryfile.find(delim, start);
+				}
+				string query = queryfile.substr(start, end);
+
+				//delete potentially existing search file for this query
+				string f = opt.outprefix+"_"+query+".search";
+				if (std::remove(f.c_str()) != 0) {
+					perror( "Error deleting file" );
+				} else {
+					cout << "File " << f << " removed" << endl;
+				}
+
+				vector<pair<string,string>> fasta = parseFasta(queryfile, opt.k);
+				size_t bucketSize = fasta.size() / (num_threads);
+				size_t leftOvers = fasta.size() % (num_threads);
+
+				int thread_counter = 0;
+				std::vector<thread> threadList;
+
+				for(int i = 0; i <= fasta.size(); i=i+bucketSize) {
+					if (thread_counter+1 < num_threads){
+						threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(tra), i, (i+bucketSize-1),query));
+						thread_counter++;
+					} else {
+						threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(tra),i,0,query));
+						break;
+					}
+				}
+
+				//write the results!
+				cout << "Start writing..." << endl;
+				writeResults_singleFile(opt.outprefix,query,q,cdbg);
+
+				//Join the threads with the main thread
+				for (auto& thread : threadList) {
+					thread.join();
+				}
+			}
+			else {
+				//we have only one thread to run, but could have multiple query files
+				for(auto& queryfile : opt.queryfiles){
+					run_subsample_completeQuery(q, db_size, k, opt.d, queryfile, tra, opt.outprefix);
+					writeResults_multipleFiles(opt.outprefix,q,cdbg);
+				}
+			}
+		}
+
 
 
 	//cout << "Search took " << (float( clock () - begin_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
 	cout << "Goodbye!" << endl;
-//	}
+	}
 	}
 }
 
