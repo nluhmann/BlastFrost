@@ -56,19 +56,16 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(string query, int k, in
 
 	for (const auto& kmer: kmers){
 		cout << kmer.toString() << endl;
-		UnitigMap<DataAccessor<UnitigData>, DataStorage<UnitigData>, false> map = cdbg.find(kmer);
+		UnitigColorMap<UnitigData> map = cdbg.find(kmer);
 
-		cout << "found map" << endl;
 		if (! map.isEmpty) {
 			const DataAccessor<UnitigData>* da = map.getData();
 			UnitigColors* uc = da->getUnitigColors(map);
-			cout << "get colors" << endl;
 			bool copy = false;
 
 			//ToDo: if this UnitigColors object contains the same colors as the object of the previous kmer (which is likely), then we already know whats happening!
 			if (! first) {
 				if (uc == old_uc && (! wasEmpty)){
-					cout << "copy colors" << endl;
 					//we can simply copy the result of the previous kmer!
 					copy = true;
 					for(auto& color : arr){
