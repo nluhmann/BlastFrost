@@ -22,6 +22,7 @@
 #include <set>
 #include <fstream>
 #include <mutex>
+#include <stack>
 
 #include <gsl/gsl_cdf.h>
 #include <math.h>
@@ -69,6 +70,12 @@ public:
 	 * Find the unitig that corresponds to this string, and report all colors of this unitig
 	 */
 	vector<string> getColors(const string& u);
+
+	void exploreSubgraph(string s);
+
+	void exploreBubble(string left, string right, int threshold);
+
+	void DFS_Iterative(const UnitigColorMap<UnitigData>& start, Kmer& stop, int threshold);
 
 };
 

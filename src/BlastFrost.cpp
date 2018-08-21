@@ -63,6 +63,8 @@ struct searchOptions {
   int k = 31;
   int d = 0;
   bool enhanceGFA = false;
+  string s1 = "";
+  string s2 = "";
 } ;
 
 
@@ -71,7 +73,7 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 
 	int oc; //option character
 
-	while ((oc = getopt(argc, argv, "o:t:q:g:k:d:vc")) != -1) {
+	while ((oc = getopt(argc, argv, "o:t:q:g:k:d:l:r:vc")) != -1) {
 		switch (oc) {
 		case 'o':
 			/* handle -o, set fileprefix */
@@ -96,6 +98,12 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 			break;
 		case 'd':
 			opt.d = atoi(optarg);
+			break;
+		case 'l':
+			opt.s1 = optarg;
+			break;
+		case 'r':
+			opt.s2 = optarg;
 			break;
 		case 'q':
 			/* handle -g, collect query files */
@@ -122,16 +130,16 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 	}
 
 	//check if output prefix is given (-o), otherwise set default to "output"
-	if (opt.outprefix == "" && ! opt.enhanceGFA){
-		cout << "No outfile prefix given, set default value 'output'" << endl;
-		//opt.prefixFilenameOut = "output";
-	}
-
-	//check if query file is given (-q)
-	if (opt.queryfiles.empty() && ! opt.enhanceGFA){
-		cout << "No query files given to search graph!" << endl;
-		exit (EXIT_FAILURE);
-	}
+//	if (opt.outprefix == "" && ! opt.enhanceGFA){
+//		cout << "No outfile prefix given, set default value 'output'" << endl;
+//		//opt.prefixFilenameOut = "output";
+//	}
+//
+//	//check if query file is given (-q)
+//	if (opt.queryfiles.empty() && ! opt.enhanceGFA){
+//		cout << "No query files given to search graph!" << endl;
+//		exit (EXIT_FAILURE);
+//	}
 }
 
 
@@ -339,6 +347,7 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 
 			pair<string,string> seq = fasta[i];
 			unordered_map<size_t,vector<int>> res = tra.search(seq.second, k, d);
+			cout << res.size() << endl;
 			//tra.remove_singletonHits(res);
 
 
@@ -459,7 +468,6 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 
 void writeResults_singleFile(string& outprefix, string& query, queue<pair<string,vector<searchResult>>>& q, ColoredCDBG<UnitigData>& cdbg){
 	//the main thread will take care of writing the output as soon as it is available
-	cout << "write single file" << endl;
 
 	mtx_writing.lock();
 	std::ofstream output(outprefix+"_"+query+".search",std::ios_base::app);
@@ -573,7 +581,32 @@ int main(int argc, char **argv) {
 		GraphTraverser tra(cdbg);
 		if (opt.enhanceGFA){
 
+			cout << "---Augment GFA file with color infos---" << endl;
 			augmentGFA(tra,opt.graphfile,cdbg.getNbColors());
+		} else if (opt.s1 != "") {
+
+			cout << "---Explore subgraph between anchor sequences---" << endl;
+
+			vector<pair<string,string>> seq1 = parseFasta(opt.s1, opt.k);
+			//cout << seq1.size() << endl;
+			//tra.exploreSubgraph(seq1[0].second);
+
+
+			//cout << "---------------------------" << endl;
+
+			vector<pair<string,string>> seq2 = parseFasta(opt.s2, opt.k);
+			//cout << seq2.size() << endl;
+			//cout << seq2[0].second << endl;
+			//tra.exploreSubgraph(seq2[0].second);
+
+
+			//assume last k-mer of first and first k-mer of last as start and end unitig
+			tra.exploreBubble(seq1[0].second, seq2[0].second, 1000);
+
+
+
+
+
 		} else {
 
 
@@ -625,7 +658,6 @@ int main(int argc, char **argv) {
 			}
 		} else {
 			//split files and stuff!
-
 
 
 			if (num_threads > 0){
