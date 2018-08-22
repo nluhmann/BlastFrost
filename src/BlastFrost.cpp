@@ -601,7 +601,7 @@ int main(int argc, char **argv) {
 
 
 			//assume last k-mer of first and first k-mer of last as start and end unitig
-			tra.exploreBubble(seq1[0].second, seq2[0].second, 1000);
+			tra.exploreBubble(seq1[0].second, seq2[0].second, 30);
 
 
 
