@@ -302,7 +302,9 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(const string& query, co
 
 vector<Kmer> GraphTraverser::compute_neighborhood(const string& kmer_str, const int d) const {
 
-	vector<char> alphabet = {'A','C','G','T'};
+	static const size_t alphabet_sz = 4;
+	static const char alphabet[alphabet_sz] = {'A','C','G','T'};
+
 	vector<Kmer> neighborhood;
 	//string kmer_str = kmer.toString();
 	vector<int> firstRow;
@@ -311,48 +313,43 @@ vector<Kmer> GraphTraverser::compute_neighborhood(const string& kmer_str, const 
 
 	for (int i = 0; i <= kmer_str.size(); ++i) firstRow.push_back(i);
 
-	GraphTraverser::searchNextRow("", kmer_str, firstRow, neighborhood, alphabet, d);
+	GraphTraverser::searchNextRow(string(""), kmer_str, firstRow, neighborhood, alphabet, alphabet_sz, d);
 
 	return neighborhood;
 
 }
 
-void GraphTraverser::searchNextRow(const string v, const string& word, const vector<int>& lastRow, vector<Kmer>& neighborhood, const vector<char>& alphabet, const int d) const {
+void GraphTraverser::searchNextRow(const string& v, const string& word, const vector<int>& lastRow, vector<Kmer>& neighborhood, const char* alphabet, const size_t alphabet_sz, const int d) const {
 
 	int min = *(std::min_element(lastRow.begin(), lastRow.end()));
 
-	if(min <= d && min > 0 && v.length() == word.length()){
+	if ((min <= d) && (min > 0) && (v.length() == word.length())) {
 
-		string suffix = v.substr(0,word.length());
-		//cout << "suffix: " << suffix << endl;
-		Kmer next_kmer(suffix.c_str());
-		neighborhood.push_back(next_kmer);
+		const string suffix(v.substr(0, word.length()));
+
+		neighborhood.push_back(Kmer(suffix.c_str()));
 
 	} else if (min == d){
 
 		//int counter = word.size();
 		for(const auto& elem : lastRow){
+
 			if (elem == d){
 				//report v*w^x
 				if (v.length() == word.length()){
 					//cout << "v: " << v << endl;
-					Kmer next_kmer(v.c_str());
-					neighborhood.push_back(next_kmer);
+					neighborhood.push_back(Kmer(v.c_str()));
 					break;
 				}
 				else if (v.length() < word.length()) {
-					int pos = v.length();
+
 					//cout << pos << endl;
-					string suffix = word.substr(pos);
-					string concat = v+suffix;
+					const string suffix = word.substr(v.length());
+					const string concat = v + suffix;
 					//cout << "concat: " << concat << endl;
-					Kmer next_kmer(concat.c_str());
-					neighborhood.push_back(next_kmer);
+					neighborhood.push_back(Kmer(concat.c_str()));
 					break;
 				}
-
-
-
 
 				//cout << "concat: " << concat << endl;
 				//cout << "----" << endl;
@@ -363,93 +360,84 @@ void GraphTraverser::searchNextRow(const string v, const string& word, const vec
 				//	neighborhood.push_back(next_kmer);
 				//}
 			}
+
 			//counter--;
 		}
-	} else if(min < d){
-		for (const char a : alphabet){
+	}
+	else if (min < d){
+
+		for (size_t j = 0; j != alphabet_sz; ++j){
+
+			const char* str = word.c_str();
+
 			vector<int> nextRow;
 			//first entry can only be an insert
 			nextRow.push_back(lastRow[0]+1);
-			const char* str = word.c_str();
-			for(int i = 1; i< lastRow.size(); ++i){
-				int ins = lastRow[i]+1;
-				int del = nextRow[i-1]+1;
-				int sub;
-				if (str[i-1] == a){
-					sub = lastRow[i-1];
-				} else {
-					sub = lastRow[i-1]+1;
-				}
+
+			for (int i = 1; i< lastRow.size(); ++i){
+
+				const int ins = lastRow[i]+1;
+				const int del = nextRow[i-1]+1;
+				const int sub = lastRow[i-1] + (str[i-1] != alphabet[j]);
+
 				nextRow.push_back(std::min(std::min(ins, del), sub));
 			}
-			string next = v+a;
-			GraphTraverser::searchNextRow(next,word,nextRow,neighborhood,alphabet,d);
+
+			const string next = v + alphabet[j];
+
+			GraphTraverser::searchNextRow(next, word, nextRow, neighborhood, alphabet,alphabet_sz, d);
 		}
 	}
 }
 
 
-void GraphTraverser::remove_singletonHits(unordered_map<size_t,vector<int>>& hits){
+void GraphTraverser::remove_singletonHits(unordered_map<size_t, vector<int>>& hits) const {
 
 	const int k = cdbg.getK();
 
 	vector<size_t> to_be_removed;
 
-	for (auto& hit : hits){
-		const vector<int> seq = hit.second;
+	for (const auto& hit : hits){
+
+		const vector<int>& seq = hit.second;
 		//if first and last appearance of '1' in vector is more than k appart, then everything is ok!
 		int cnt_begin = 0;
-		for (vector<int>::const_iterator i = seq.begin(); i != seq.end(); ++i){
-			if (*i == 1){
-				break;
-			}
-			cnt_begin++;
-		}
-
 		int cnt_end = 0;
+
+		for (vector<int>::const_iterator i = seq.begin(); i != seq.end(); ++i){
+
+			if (*i == 1) break;
+			++cnt_begin;
+		}
+
 		for (vector<int>::const_reverse_iterator i = seq.rbegin(); i != seq.rend(); ++i){
-			if (*i == 1){
-				break;
-			}
-			cnt_end++;
+
+			if (*i == 1) break;
+			++cnt_end;
 		}
 
-		if ((seq.size() - cnt_end - cnt_begin) <= k){
-			to_be_removed.push_back(hit.first);
-		}
+		if ((seq.size() - cnt_end - cnt_begin) <= k) to_be_removed.push_back(hit.first);
 	}
 
-	for (auto& elem : to_be_removed){
-		hits.erase(elem);
-	}
+	for (const auto elem : to_be_removed) hits.erase(elem);
 
 	//cout << "Number of singleton hits removed: " << to_be_removed.size() << endl;
 }
 
 
-
 //deprecated.
-long double GraphTraverser::compute_p(long double& k, long double& x, long double& sigma){
-	long double p = 1-pow(1-pow(sigma,-k),x);
-	return p;
-}
+unordered_map<size_t,double> GraphTraverser::compute_significance(const unordered_map<size_t,vector<int>>& hits, const long double p) const {
 
+	unordered_map<size_t, double> p_values;
 
-//deprecated.
-unordered_map<size_t,double> GraphTraverser::compute_significance(unordered_map<size_t,vector<int>>& hits, long double& p) {
-	unordered_map<size_t,double> p_values;
+	for (const auto& hit: hits){
 
-	for (auto& hit: hits){
-		int q = hit.second.size();
+		const int q = hit.second.size();
+		const int m = std::count(hit.second.begin(), hit.second.end(), 1); //compute number of 1's in vector
+		const double r = gsl_cdf_binomial_Q(m, p, q);
 
-		//compute number of 1's in vector
-		int m = std::count(hit.second.begin(), hit.second.end(), 1);
+		if (r > 0.05) cout << "p-value: " << r << endl;
 
-		double r = gsl_cdf_binomial_Q(m, p, q);
-
-		if (r > 0.05){
-			cout << "p-value: " << r << endl;
-		}
 		p_values[hit.first] = r;
 	}
 
@@ -461,83 +449,60 @@ unordered_map<size_t,double> GraphTraverser::compute_significance(unordered_map<
  * _Approximate_ number of matches and mismatches from k-mer hits.
  * Atm, we use the average number of mismatches that can explain a run of 0's of a specific length.
  */
-int GraphTraverser::compute_score(const vector<int>& hit){
+int GraphTraverser::compute_score(const vector<int>& hit) const {
+
 	const int score_match = 1;
 	const int score_mismatch = -2;
-
 	const int l = hit.size();
 
 	int mismatch = 0;
 	int cnt = 0;
-	for(auto& elem: hit){
-		if (elem == 0){
-			cnt+=1;
-		} else if (cnt != 0){
+
+	for (const auto elem : hit){
+
+		if (elem == 0) ++cnt;
+		else if (cnt != 0){
 			//cout << "cnt: " << cnt << endl;
-			int local = ceil(float(cnt)/31);
-			int local2 = floor(cnt - 31 + 1);
-			int avg = (local+local2)/2;
+			const int local = ceil(float(cnt)/31);
+			const int local2 = floor(cnt - 31 + 1);
+			const int avg = (local+local2)/2;
+
 			mismatch += avg;
 			cnt = 0;
 		}
 	}
+
 	if (cnt != 0){
-		int local = ceil(float(cnt)/31);
-		int local2 = floor(cnt - 31 + 1);
-		int avg = (local+local2)/2;
+
+		const int local = ceil(float(cnt)/31);
+		const int local2 = floor(cnt - 31 + 1);
+		const int avg = (local+local2)/2;
+
 		mismatch += avg;
 	}
 
-	int match = l - mismatch;
-	if (match <= 0){
-		cout << "ERROR! No matches!" << endl;
-	}
+	const int match = l - mismatch;
 
-	const int score = match*score_match+mismatch*score_mismatch;
-	return score;
+	if (match <= 0) cout << "ERROR! No matches!" << endl;
+
+	return match * score_match + mismatch * score_mismatch;
 }
 
+void GraphTraverser::writePresenceMatrix(const unordered_map<size_t,vector<int>>& arr, const string& outfile, const unordered_map<size_t,long double>& pvalues) const {
 
+	std::ofstream output(outfile, std::ofstream::binary);
 
+	for (const auto& elem : arr){
 
-long double GraphTraverser::compute_evalue(const int& score, const double& db_size, const int& n) const{
-	long double evalue = blast_k*db_size*n*exp(-lambda*score);
-	return evalue;
-}
-
-long double GraphTraverser::compute_pvalue(const long double& evalue) const{
-	long double pvalue = 1-exp(-evalue);
-	return pvalue;
-}
-
-
-long double GraphTraverser::compute_log_evalue(const int& score, const double& db_size, const int& n) const{
-	long double log_evalue = round(log(blast_k*db_size*n)-lambda*score);
-	return log_evalue;
-
-}
-
-long double GraphTraverser::compute_log_pvalue(const long double& log_evalue) const{
-	long double evalue = pow(10,log_evalue);
-	if (1-exp(-evalue) > 0){
-		return round(log(1-exp(-evalue)));
-	} else {
-		return round(log_evalue);
-	}
-}
-
-
-
-void GraphTraverser::writePresenceMatrix(const unordered_map<size_t,vector<int>>& arr, const string& outfile, const unordered_map<size_t,long double>& pvalues){
-	std::ofstream output(outfile,std::ofstream::binary);
-	for (auto& elem : arr){
 		const string color = cdbg.getColorName(elem.first);
+
 		output << color << "\t" << pvalues.at(elem.first);
-		for (auto& p : elem.second){
-			output << "\t" << p;
-		}
+
+		for (const auto& p : elem.second) output << "\t" << p;
+
 		output << endl;
 	}
+
 	output.close();
 }
 
@@ -545,27 +510,30 @@ void GraphTraverser::writePresenceMatrix(const unordered_map<size_t,vector<int>>
 /*
  * Find the unitig that corresponds to this string, and report all colors of this unitig
  */
-vector<string> GraphTraverser::getColors(const string& u){
+vector<string> GraphTraverser::getColors(const string& u) const {
+
 	vector<string> colors;
+
 	const int k = cdbg.getK();
 	const string kmer = u.substr(0,k);
 	const char *cstr = kmer.c_str();
-	Kmer head(cstr);
 
-	UnitigMap<DataAccessor<UnitigData>, DataStorage<UnitigData>, false> map = cdbg.find(head,true);
+	const Kmer head(cstr);
 
-	if (! map.isEmpty) {
+	const const_UnitigColorMap<UnitigData> map = cdbg.find(head, true);
+
+	if (!map.isEmpty) {
+
 		const DataAccessor<UnitigData>* da = map.getData();
-		UnitigColors* uc = da->getUnitigColors(map);
+		const UnitigColors* uc = da->getUnitigColors(map);
+
 		for (UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); it.nextColor()) {
-			const size_t colorID = it.getColorID();
-			string color = cdbg.getColorName(colorID);
-			colors.push_back(color);
+
+			colors.push_back(cdbg.getColorName(it.getColorID()));
 		}
 
-	} else {
-		cout << "Error, unitig not found." << endl;
 	}
+	else cout << "Error, unitig not found." << endl;
 
 	return colors;
 }

@@ -28,7 +28,7 @@
 #include <math.h>
 
 class GraphTraverser{
-	
+
 private:
 
 	//reference to the graph that is going to be traversed
@@ -45,32 +45,22 @@ public:
 
 	//void writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile);
 
-	void writePresenceMatrix(const unordered_map<size_t,vector<int>>& arr, const string& outfile, const unordered_map<size_t,long double>& pvalues);
+	void writePresenceMatrix(const unordered_map<size_t,vector<int>>& arr, const string& outfile, const unordered_map<size_t,long double>& pvalues) const;
 
-	long double compute_p(long double& k, long double& x, long double& sigma);
+	unordered_map<size_t, double> compute_significance(const unordered_map<size_t, vector<int>>& hits, const long double p) const;
 
-	unordered_map<size_t,double> compute_significance(unordered_map<size_t,vector<int>>& hits, long double& p);
+	void remove_singletonHits(unordered_map<size_t,vector<int>>& hits) const;
 
-	void remove_singletonHits(unordered_map<size_t,vector<int>>& hits);
-
-	int compute_score(const vector<int>& hit);
-
-	long double compute_evalue(const int& score, const double& db_size, const int& n) const;
-
-	long double compute_pvalue(const long double& evalue) const;
-
-	long double compute_log_evalue(const int& score, const double& db_size, const int& n) const;
-
-	long double compute_log_pvalue(const long double& log_evalue) const;
+	int compute_score(const vector<int>& hit) const;
 
 	vector<Kmer> compute_neighborhood(const string& kmer_str, const int d) const;
 
-	void searchNextRow(const string v, const string& word, const vector<int>& lastRow, vector<Kmer>& neighborhood, const vector<char>& alphabet, const int d) const;
+	void searchNextRow(const string& v, const string& word, const vector<int>& lastRow, vector<Kmer>& neighborhood, const char* alphabet, const size_t alphabet_sz, const int d) const;
 
 	/*
 	 * Find the unitig that corresponds to this string, and report all colors of this unitig
 	 */
-	vector<string> getColors(const string& u);
+	vector<string> getColors(const string& u) const;
 
 	void exploreSubgraph(const string& s) const;
 
@@ -78,6 +68,36 @@ public:
 
 	void DFS_Iterative(const UnitigColorMap<UnitigData>& start, const Kmer& stop, const int threshold);
 
+	//deprecated.
+	inline long double compute_p(const long double k, const long double x, const long double sigma) const {
+
+		return 1-pow(1-pow(sigma,-k),x);
+	}
+
+	inline long double compute_evalue(const int score, const double db_size, const int n) const {
+		
+		return blast_k * db_size * n * exp(-lambda * score);
+	}
+
+	inline long double compute_pvalue(const long double evalue) const {
+		
+		return 1-exp(-evalue);
+	}
+
+
+	inline long double compute_log_evalue(const int score, const double db_size, const int n) const {
+		
+		return round(log(blast_k * db_size * n) - lambda * score);
+	}
+
+	inline long double compute_log_pvalue(const long double log_evalue) const {
+
+		const long double evalue = pow(10, log_evalue);
+
+		if (1-exp(-evalue) > 0) return round(log(1-exp(-evalue)));
+
+		return round(log_evalue);
+	}
 };
 
 
