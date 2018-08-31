@@ -29,4 +29,4 @@ file(GLOB SOURCES "src/*.cpp")
 add_executable(BlastFrost ${SOURCES})
 
 
-target_link_libraries(BlastFrost pthread z roaring bifrost gsl gslcblas)
+target_link_libraries(BlastFrost pthread z bifrost gsl gslcblas)

@@ -28,6 +28,7 @@
 #include <math.h>
 
 class GraphTraverser{
+	
 private:
 
 	//reference to the graph that is going to be traversed
@@ -40,7 +41,7 @@ public:
 
 	GraphTraverser(ColoredCDBG<UnitigData>& cdbg);
 
-	unordered_map<size_t,vector<int>> search(string query, int k, int ndistance);
+	unordered_map<size_t,vector<int>> search(const string& query, const int k, const int ndistance) const;
 
 	//void writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile);
 
@@ -62,20 +63,20 @@ public:
 
 	long double compute_log_pvalue(const long double& log_evalue) const;
 
-	vector<Kmer> compute_neighborhood(string kmer_str, int d);
+	vector<Kmer> compute_neighborhood(const string& kmer_str, const int d) const;
 
-	void searchNextRow(string v, string& word, vector<int> lastRow, vector<Kmer>& neighborhood, vector<char>& alphabet, int& d);
+	void searchNextRow(const string v, const string& word, const vector<int>& lastRow, vector<Kmer>& neighborhood, const vector<char>& alphabet, const int d) const;
 
 	/*
 	 * Find the unitig that corresponds to this string, and report all colors of this unitig
 	 */
 	vector<string> getColors(const string& u);
 
-	void exploreSubgraph(string s);
+	void exploreSubgraph(const string& s) const;
 
-	void exploreBubble(string left, string right, int threshold);
+	void exploreBubble(const string& left, const string& right, const int threshold);
 
-	void DFS_Iterative(const UnitigColorMap<UnitigData>& start, Kmer& stop, int threshold);
+	void DFS_Iterative(const UnitigColorMap<UnitigData>& start, const Kmer& stop, const int threshold);
 
 };
 
