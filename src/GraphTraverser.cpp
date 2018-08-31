@@ -288,9 +288,9 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(const string& query, co
 			}
 
 			old_uc = uc;
-			wasEmpty = false;
+		}
 
-		} else wasEmpty = true;
+		wasEmpty = map.isEmpty;
 
 		++kmer_count;
 	}
