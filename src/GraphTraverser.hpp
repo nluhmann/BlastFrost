@@ -29,6 +29,7 @@
 #include <math.h>
 
 class GraphTraverser{
+
 private:
 
 	//reference to the graph that is going to be traversed
@@ -72,7 +73,7 @@ public:
 
 	//void BFS_Iterative(const UnitigColorMap<UnitigData>& start, const Kmer& stop, const int threshold);
 
-	//deprecated.
+
 	inline long double compute_p(const long double k, const long double x, const long double sigma) const {
 
 		return 1-pow(1-pow(sigma,-k),x);

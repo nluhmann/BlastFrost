@@ -11,7 +11,6 @@
 #include "GraphTraverser.hpp"
 #include "UnitigData.hpp"
 
-
 #include <gsl/gsl_cdf.h>
 #include <gsl/gsl_randist.h>
 #include <math.h>

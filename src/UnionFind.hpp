@@ -16,7 +16,6 @@ class UnionFind {
 
 public:
 
-
 	// Create an empty union find data structure with N isolated sets.
 	UnionFind(const int N);
 	~UnionFind();
