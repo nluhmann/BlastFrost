@@ -16,31 +16,39 @@ class UnionFind {
 
 public:
 
-	int *id, cnt, *sz;
 
 	// Create an empty union find data structure with N isolated sets.
-	UnionFind(int N);
+	UnionFind(const int N);
 	~UnionFind();
 
 	// Return the id of component corresponding to object p.
 	int find(int p);
 
 	// Replace sets containing x and y with their union.
-	void merge(int x, int y);
+	void merge(const int x, const int y);
 
 	// Are objects x and y in the same set?
-	bool connected(int x, int y);
+	inline bool connected(const int x, const int y) {
 
-	// Return the number of disjoint sets.
-	int count();
+		return UnionFind::find(x) == UnionFind::find(y);
+	}
+
+	// Return the number of connected components
+	inline int count() const {
+
+		return cnt;
+	}
 
 	// Return the number of connected components of a specific size (size=number of elements)
-	std::unordered_map<int,int> countSize(int N);
+	std::unordered_map<int,int> countSize(const int N) const;
 
-	std::unordered_map<int,std::vector<int>> compileComponents(int N);
+	std::unordered_map<int,std::vector<int>> compileComponents(const int N) const;
 
 private:
-	std::unordered_map<int,int> histogram(std::unordered_map<int,int> app);
+
+	int *id, cnt, *sz;
+
+	std::unordered_map<int,int> histogram(const std::unordered_map<int,int>& app) const;
 
 };
 

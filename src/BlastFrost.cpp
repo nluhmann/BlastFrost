@@ -29,10 +29,12 @@ std::atomic<int> running(0);
 
 
 void PrintUsage() {
-	cout << "BlastFrost -g <BifrostGraph> -q <query_sequences> -o <outfile_prefix> " << endl << endl;
+	cout << "BlastFrost -g <BifrostGraph> -f <BifrostColors> -q <query_sequences> -o <outfile_prefix> " << endl << endl;
 
 	cout << "Mandatory parameters with required argument:" << endl << endl
-			<< "  -g,         Input Bifrost graph prefix"
+			<< "  -g,         Input Bifrost graph file (GFA format)"
+			<< endl
+			<< "  -f,         Input Bifrost color file (BFG_COLORS format)"
 			<< endl
 			<< "  -q,         Query sequences (multiple FASTA)"
 			<< endl
@@ -55,16 +57,19 @@ void PrintUsage() {
 
 
 struct searchOptions {
-  string graphfile = "";
-  vector<string> queryfiles;
-  size_t nb_threads = 1;
-  bool verbose = false;
-  string outprefix = "output";
-  int k = 31;
-  int d = 0;
-  bool enhanceGFA = false;
-  string s1 = "";
-  string s2 = "";
+	string graphfile;
+	string colorfile;
+	vector<string> queryfiles;
+	size_t nb_threads;
+	bool verbose;
+	string outprefix;
+	int k;
+	int d;
+	bool enhanceGFA;
+	string s1;
+	string s2;
+
+	searchOptions() : nb_threads(1), verbose(false), outprefix("output"), k(31), d(0), enhanceGFA(false) {};
 } ;
 
 
@@ -73,7 +78,7 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 
 	int oc; //option character
 
-	while ((oc = getopt(argc, argv, "o:t:q:g:k:d:l:r:vc")) != -1) {
+	while ((oc = getopt(argc, argv, "o:t:q:g:f:k:d:l:r:vc")) != -1) {
 		switch (oc) {
 		case 'o':
 			/* handle -o, set fileprefix */
@@ -92,6 +97,9 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 			break;
 		case 'g':
 			opt.graphfile = optarg;
+			break;
+		case 'f':
+			opt.colorfile = optarg;
 			break;
 		case 'k':
 			opt.k = atoi(optarg);
@@ -124,9 +132,13 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 
 
 	//check if precomputed graph prefix is given (-g)
-	if (opt.graphfile == ""){
-		cout << "No input files given to build graph!" << endl;
-		 exit (EXIT_FAILURE);
+	if (opt.graphfile.empty()){
+		cout << "No input file given to load the graph!" << endl;
+		exit (EXIT_FAILURE);
+	}
+	else if (opt.colorfile.empty()){
+		cout << "No input file given to load colors!" << endl;
+		exit (EXIT_FAILURE);
 	}
 
 	//check if output prefix is given (-o), otherwise set default to "output"
@@ -143,7 +155,7 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 }
 
 
-int augmentGFA(GraphTraverser& tra, string& gfaPrefix, const size_t& num_colors){
+int augmentGFA(GraphTraverser& tra, const string& gfaPrefix, const size_t& num_colors){
 	// open gfa, read line by line, immadiately write to augmented file
 
 	std::ofstream output(gfaPrefix+"_colored.gfa",std::ofstream::binary);
@@ -563,7 +575,8 @@ int main(int argc, char **argv) {
 		//ToDo: for input parameter k, build graph with g=k-8
 		ColoredCDBG<UnitigData> cdbg;
 
-		if (cdbg.read(opt.graphfile, opt.nb_threads, opt.verbose)){
+
+		if (cdbg.read(opt.graphfile, opt.colorfile, opt.nb_threads, opt.verbose)){
 				cout << "Graph loading successful" << endl;
 		} else {
 			cout << "Graph could not be loaded! Exit." << endl;
@@ -579,6 +592,7 @@ int main(int argc, char **argv) {
 		const clock_t begin_time = clock();
 
 		GraphTraverser tra(cdbg);
+
 		if (opt.enhanceGFA){
 
 			cout << "---Augment GFA file with color infos---" << endl;
@@ -601,7 +615,7 @@ int main(int argc, char **argv) {
 
 
 			//assume last k-mer of first and first k-mer of last as start and end unitig
-			tra.exploreBubble(seq1[0].second, seq2[0].second, 30);
+			tra.exploreBubble(seq1[0].second, seq2[0].second, 200);
 
 
 
