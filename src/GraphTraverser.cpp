@@ -101,184 +101,93 @@ void GraphTraverser::exploreBubble(const string& left, const string& right, cons
 
 
 
-void GraphTraverser::DFS_Iterative(const UnitigColorMap<UnitigData>& start, const Kmer& stop, const int threshold){
 
+void GraphTraverser::DFS_Iterative(const UnitigColorMap<UnitigData>& start, const Kmer& stop, const int threshold){
 	//record the path we are iterating over, and push it to the result if we reach the stop Kmer
 
-    stack<UnitigColorMap<UnitigData>> stck; // Create stack of unitig to traverse
-    UnitigColorMap<UnitigData> ucm_tmp(start); // Create a non-const local copy of unitig given in parameter
+	stack<UnitigColorMap<UnitigData>> stck; // Create stack of unitig to traverse
+	UnitigColorMap<UnitigData> ucm_tmp(start); // Create a non-const local copy of unitig given in parameter
 
-    stck.push(ucm_tmp); // Push first unitig to traverse on the stack
-
-    bool stop_reached = false;
-
-    vector<UnitigColorMap<UnitigData>> currentPath;
-
-    while (!stck.empty()){ // While there are unitigs to traverse in the stack
-    	cout << currentPath.size() << endl;
-    	ucm_tmp = stck.top(); // Get the unitig on top of the stack
-
-    	stck.pop(); // Delete unitig on the top of the stack
-
-    	//we might have peviously found a stop criterion
-    	if (stop_reached) {
-    		cout << "clear path" << endl;
-    		stop_reached = false;
+	stck.push(ucm_tmp); // Push first unitig to traverse on the stack
 
 
-    		vector<UnitigColorMap<UnitigData>> oldPath = currentPath;
-    		currentPath.clear();
-    		cout << currentPath.size() << endl;
+	bool stop_reached = false;
+	vector<UnitigColorMap<UnitigData>> currentPath;
 
-    		for (auto& predecessor : ucm_tmp.getPredecessors()){
-    			DataAccessor<UnitigData>* pre_da = predecessor.getData(); // Get DataAccessor from unitig
-    			UnitigData* pre_data = pre_da-> getData(predecessor); // Get boolean from DataAccessor
-    			if (pre_data->is_visited()){
-    				//we found the branching node, re-add old path to current path up to this point!
-    				for (auto& unitig : oldPath){
-    					if (unitig != predecessor){
-    						currentPath.push_back(unitig);
-    					}
+	while (!stck.empty()){ // While there are unitigs to traverse in the stack
+	    	ucm_tmp = stck.top(); // Get the unitig on top of the stack
 
-    				}
-    			}
-    		}
+	    	stck.pop(); // Delete unitig on the top of the stack
 
-    		cout << "adjusted currentPath" << endl;
-    	}
-
-    	if (currentPath.size() > threshold){
-    		cout << "threshold reached!" << endl;
-    		stop_reached = true;
-    		cout << currentPath[currentPath.size()-1].referenceUnitigToString() << endl;
-    	}
-
-    	if (ucm_tmp.getUnitigHead() == stop){
-    		cout << "Found the end!" << endl;
-    		stop_reached = true;
-    		//ToDo: mark path found as target path!
-
-    		for (auto& elem : currentPath){
-    			DataAccessor<UnitigData>* da = elem.getData(); // Get DataAccessor from unitig
-    			UnitigData* data = da-> getData(elem); // Get boolean from DataAccessor
-    			data-> set_on_target_path();
-    		}
+	    	currentPath.push_back(ucm_tmp);
 
 
-    	} else {
+	    	//Case1: we found the end
+	    	if (ucm_tmp.getUnitigHead() == stop){
+	    	    //scout << "Found the end!" << endl;
+	    	    stop_reached = true;
 
-    		DataAccessor<UnitigData>* da = ucm_tmp.getData(); // Get DataAccessor from unitig
-    		UnitigData* data = da->getData(ucm_tmp); // Get boolean from DataAccessor
-
-    		//ToDo: if it has already been visited, but is on a target path, we need to go on again! Q: can this result in an endless loop?
-    		//HowTo: backtrack when a path is found!
-    		if (data->is_not_visited() || data -> is_on_target_path()){ // If boolean indicates the unitig was not visited
-
-    			data->set_visited(); // Set boolean to indicate unitig was visited
-    			currentPath.push_back(ucm_tmp);
-
-
-    			for (auto& successor : ucm_tmp.getSuccessors()) {
-    				stck.push(successor);
-    			}
+	    	    //ToDo: clear marking
+	    	    for (auto& unitig : currentPath){
+	    	    	DataAccessor<UnitigData>* pathda = unitig.getData(); // Get DataAccessor from unitig
+	    	    	UnitigData* pathdata = pathda->getData(unitig); // Get boolean from DataAccessor
+	    	    	pathdata->set_on_target_path();
+	    	    }
+	    	}
 
 
-    		} else {
-    			//we found a dead end, backtrack current path until last merging point -> backtrack to the last time we added more than 1 successor to the stack!
-    			stop_reached = true;
-    		}
-    	}
-    }
+	    	//Case2: we reached the limit
+	    	if (currentPath.size() > threshold){
+	    		//cout << "Threshold reached!" << endl;
+	    		stop_reached = true;
+
+//	    		for (auto& unitig : currentPath){
+//	    			DataAccessor<UnitigData>* pathda = unitig.getData(); // Get DataAccessor from unitig
+//	    			UnitigData* pathdata = pathda->getData(unitig); // Get boolean from DataAccessor
+//	    			pathdata->set_seen();
+//	    		}
+	    	}
+
+
+	    	if (stop_reached){
+	    		//backtrace
+	    		stop_reached = false;
+
+	    		//adjust current path such that only the predecessor of the next unitig on the stack is present
+	    		UnitigColorMap<UnitigData> ucm_next = stck.top();
+	    		DataAccessor<UnitigData>* nextda = ucm_next.getData(); // Get DataAccessor from unitig
+	    		UnitigData* nextdata = nextda->getData(ucm_next); // Get boolean from DataAccessor
+
+	    		for (auto& predecessor : ucm_next.getPredecessors()){
+	    			for (vector<UnitigColorMap<UnitigData>>::iterator it = currentPath.begin() ; it != currentPath.end(); ++it){
+	    				if (predecessor == *it){
+	    					currentPath.erase(it+1,currentPath.end());
+	    					break;
+	    				}
+	    			}
+	    		}
+
+
+	    	} else {
+	    		//Case 3: just go on
+	    		DataAccessor<UnitigData>* da = ucm_tmp.getData(); // Get DataAccessor from unitig
+	    		UnitigData* data = da->getData(ucm_tmp); // Get boolean from DataAccessor
+
+	    		data->set_visited(); // Set boolean to indicate unitig was visited
+
+
+	    		for (auto& successor : ucm_tmp.getSuccessors()) {
+	    			DataAccessor<UnitigData>* succda = successor.getData(); // Get DataAccessor from unitig
+	    			UnitigData* succdata = succda->getData(successor); // Get boolean from DataAccessor
+	    			if(succdata->is_not_visited() || succdata->is_on_target_path()){
+	    				stck.push(successor);
+	    			}
+	    		}
+	    	}
+	}
+
+
 }
-
-
-
-//void GraphTraverser::DFS_Iterative(const UnitigColorMap<UnitigData>& start, const Kmer& stop, const int threshold){
-//	//record the path we are iterating over, and push it to the result if we reach the stop Kmer
-//
-//	stack<UnitigColorMap<UnitigData>> stck; // Create stack of unitig to traverse
-//	UnitigColorMap<UnitigData> ucm_tmp(start); // Create a non-const local copy of unitig given in parameter
-//
-//	stck.push(ucm_tmp); // Push first unitig to traverse on the stack
-//
-//
-//	bool stop_reached = false;
-//	vector<UnitigColorMap<UnitigData>> currentPath;
-//
-//	while (!stck.empty()){ // While there are unitigs to traverse in the stack
-//	    	ucm_tmp = stck.top(); // Get the unitig on top of the stack
-//
-//	    	stck.pop(); // Delete unitig on the top of the stack
-//
-//	    	currentPath.push_back(ucm_tmp);
-//
-//
-//	    	//Case1: we found the end
-//	    	if (ucm_tmp.getUnitigHead() == stop){
-//	    	    //scout << "Found the end!" << endl;
-//	    	    stop_reached = true;
-//
-//	    	    //ToDo: clear marking
-//	    	    for (auto& unitig : currentPath){
-//	    	    	DataAccessor<UnitigData>* pathda = unitig.getData(); // Get DataAccessor from unitig
-//	    	    	UnitigData* pathdata = pathda->getData(unitig); // Get boolean from DataAccessor
-//	    	    	pathdata->set_on_target_path();
-//	    	    }
-//	    	}
-//
-//
-//	    	//Case2: we reached the limit
-//	    	if (currentPath.size() > threshold){
-//	    		//cout << "Threshold reached!" << endl;
-//	    		stop_reached = true;
-//
-////	    		for (auto& unitig : currentPath){
-////	    			DataAccessor<UnitigData>* pathda = unitig.getData(); // Get DataAccessor from unitig
-////	    			UnitigData* pathdata = pathda->getData(unitig); // Get boolean from DataAccessor
-////	    			pathdata->set_seen();
-////	    		}
-//	    	}
-//
-//
-//	    	if (stop_reached){
-//	    		//backtrace
-//	    		stop_reached = false;
-//
-//	    		//adjust current path such that only the predecessor of the next unitig on the stack is present
-//	    		UnitigColorMap<UnitigData> ucm_next = stck.top();
-//	    		DataAccessor<UnitigData>* nextda = ucm_next.getData(); // Get DataAccessor from unitig
-//	    		UnitigData* nextdata = nextda->getData(ucm_next); // Get boolean from DataAccessor
-//
-//	    		for (auto& predecessor : ucm_next.getPredecessors()){
-//	    			for (vector<UnitigColorMap<UnitigData>>::iterator it = currentPath.begin() ; it != currentPath.end(); ++it){
-//	    				if (predecessor == *it){
-//	    					currentPath.erase(it+1,currentPath.end());
-//	    					break;
-//	    				}
-//	    			}
-//	    		}
-//
-//
-//	    	} else {
-//	    		//Case 3: just go on
-//	    		DataAccessor<UnitigData>* da = ucm_tmp.getData(); // Get DataAccessor from unitig
-//	    		UnitigData* data = da->getData(ucm_tmp); // Get boolean from DataAccessor
-//
-//	    		data->set_visited(); // Set boolean to indicate unitig was visited
-//
-//
-//	    		for (auto& successor : ucm_tmp.getSuccessors()) {
-//	    			DataAccessor<UnitigData>* succda = successor.getData(); // Get DataAccessor from unitig
-//	    			UnitigData* succdata = succda->getData(successor); // Get boolean from DataAccessor
-//	    			if(succdata->is_not_visited() || succdata->is_on_target_path()){
-//	    				stck.push(successor);
-//	    			}
-//	    		}
-//	    	}
-//	}
-//
-//
-//}
 
 
 
@@ -376,12 +285,6 @@ void GraphTraverser::DFS_Iterative(const UnitigColorMap<UnitigData>& start, cons
 //    	}
 //    }
 //}
-
-
-
-
-
-
 
 
 
