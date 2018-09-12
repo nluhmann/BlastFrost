@@ -7,7 +7,7 @@
 #include "UnitigData.hpp"
 
 
-UnitigData::UnitigData() : b(NOT_VISITED_SEEN),a(NOT_ANCHOR),c(NOT_CORE) {} // Initiate the boolean to "not visited"
+UnitigData::UnitigData() : b(NOT_VISITED_SEEN),a(NOT_ANCHOR),c(NOT_CORE),t(NOT_TARGET) {} // Initiate the boolean to "not visited"
 
 
 void UnitigData::clear(const UnitigColorMap<UnitigData>&  um_dest){
@@ -15,6 +15,7 @@ void UnitigData::clear(const UnitigColorMap<UnitigData>&  um_dest){
 	set_not_seen_visited(); // Set the unitig to "not visited"
 	set_not_anchor();
 	set_not_core();
+	set_not_on_target_path();
 }
 
 
@@ -34,6 +35,7 @@ void UnitigData::concat(const UnitigColorMap<UnitigData>& um_dest, const UnitigC
     set_not_seen_visited(); // Set the unitig to "not visited"
     set_not_anchor();
     set_not_core();
+    set_not_on_target_path();
 }
 
 
@@ -43,6 +45,7 @@ void UnitigData::extract(const UnitigColors* uc_dest, const UnitigColorMap<Uniti
     set_not_seen_visited();
     set_not_anchor();
     set_not_core();
+    set_not_on_target_path();
 }
 
 
@@ -57,6 +60,7 @@ void UnitigData::merge(const UnitigColors& uc_dest, const UnitigColorMap<UnitigD
 	set_not_seen_visited();
 	set_not_anchor();
 	set_not_core();
+	set_not_on_target_path();
 }
 
 

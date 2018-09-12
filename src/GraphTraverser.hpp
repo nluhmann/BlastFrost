@@ -69,7 +69,9 @@ public:
 
 	void exploreBubble(const string& left, const string& right, const int threshold);
 
-	void DFS_Iterative(const UnitigColorMap<UnitigData>& start, const Kmer& stop, const int threshold);
+	vector<vector<UnitigColorMap<UnitigData>>> DFS_Iterative(const UnitigColorMap<UnitigData>& start, const Kmer& stop, const int threshold);
+
+	void printPaths(const vector<vector<UnitigColorMap<UnitigData>>> allPaths);
 
 	//void BFS_Iterative(const UnitigColorMap<UnitigData>& start, const Kmer& stop, const int threshold);
 

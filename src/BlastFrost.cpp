@@ -140,17 +140,7 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 		exit (EXIT_FAILURE);
 	}
 
-	//check if output prefix is given (-o), otherwise set default to "output"
-//	if (opt.outprefix == "" && ! opt.enhanceGFA){
-//		cout << "No outfile prefix given, set default value 'output'" << endl;
-//		//opt.prefixFilenameOut = "output";
-//	}
-//
-//	//check if query file is given (-q)
-//	if (opt.queryfiles.empty() && ! opt.enhanceGFA){
-//		cout << "No query files given to search graph!" << endl;
-//		exit (EXIT_FAILURE);
-//	}
+
 }
 
 
@@ -373,7 +363,7 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 				const long double pvalue2 = pow(10,log_pvalue);
 
 
-				//if (pvalue2 <= 0.05){
+				if (pvalue2 <= 0.05){
 
 					//create new searchResult and push to all results
 					searchResult result;
@@ -384,7 +374,7 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 					result.hitrun = hit.second;
 					results.push_back(result);
 
-				//}
+				}
 
 			}
 			if (results.size() > 30000){
@@ -451,7 +441,7 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 			const long double pvalue2 = pow(10,log_pvalue);
 
 
-			if (pvalue2 <= 2){
+			if (pvalue2 <= 0.05){
 
 				//create new searchResult and push to all results
 				searchResult result;
@@ -614,7 +604,7 @@ int main(int argc, char **argv) {
 
 
 			//assume last k-mer of first and first k-mer of last as start and end unitig
-			tra.exploreBubble(seq1[0].second, seq2[0].second, 200);
+			tra.exploreBubble(seq1[0].second, seq2[0].second, 1000);
 
 
 
