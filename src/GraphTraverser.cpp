@@ -536,25 +536,25 @@ void GraphTraverser::remove_singletonHits(unordered_map<size_t, vector<int>>& hi
 
 
 //deprecated.
-unordered_map<size_t,double> GraphTraverser::compute_significance(const unordered_map<size_t,vector<int>>& hits, const long double p) const {
-	unordered_map<size_t,double> p_values;
-
-	for (const auto& hit: hits){
-
-		const int q = hit.second.size();
-
-		//compute number of 1's in vector
-		const int m = std::count(hit.second.begin(), hit.second.end(), 1);
-
-		const double r = gsl_cdf_binomial_Q(m, p, q);
-
-		if (r > 0.05) cout << "p-value: " << r << endl;
-
-		p_values[hit.first] = r;
-	}
-
-	return p_values;
-}
+//unordered_map<size_t,double> GraphTraverser::compute_significance(const unordered_map<size_t,vector<int>>& hits, const long double p) const {
+//	unordered_map<size_t,double> p_values;
+//
+//	for (const auto& hit: hits){
+//
+//		const int q = hit.second.size();
+//
+//		//compute number of 1's in vector
+//		const int m = std::count(hit.second.begin(), hit.second.end(), 1);
+//
+//		const double r = gsl_cdf_binomial_Q(m, p, q);
+//
+//		if (r > 0.05) cout << "p-value: " << r << endl;
+//
+//		p_values[hit.first] = r;
+//	}
+//
+//	return p_values;
+//}
 
 
 /*

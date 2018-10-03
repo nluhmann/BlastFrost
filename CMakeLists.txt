@@ -21,11 +21,12 @@ endif(CMAKE_BUILD_TYPE MATCHES Debug)
 find_library(pthread REQUIRED)
 find_library(z REQUIRED)
 find_library(bifrost REQUIRED)
-find_library(gsl REQUIRED)
-find_library(gslcblas REQUIRED)
+#find_library(gsl REQUIRED)
+#find_library(gslcblas REQUIRED)
 
 file(GLOB SOURCES "src/*.cpp")
 add_executable(BlastFrost ${SOURCES})
 
 
-target_link_libraries(BlastFrost pthread z bifrost gsl gslcblas)
+#target_link_libraries(BlastFrost pthread z bifrost gsl gslcblas)
+target_link_libraries(BlastFrost pthread z bifrost)
