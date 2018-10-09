@@ -60,6 +60,8 @@ public:
 
 	void searchNextRow(const string& v, const string& word, const vector<int>& lastRow, vector<Kmer>& neighborhood, const char* alphabet, const size_t alphabet_sz, const int d) const;
 
+	void extractSubGraph(const string& query, const int k, const int distance);
+
 	/*
 	 * Find the unitig that corresponds to this string, and report all colors of this unitig
 	 */
