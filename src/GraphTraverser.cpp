@@ -284,7 +284,7 @@ void GraphTraverser::exploreSubgraph(const string& s) const {
 
 void GraphTraverser::extractSubGraph(const string& query, const int k, const int distance) {
 
-	unordered_map<size_t,set<const_UnitigColorMap<UnitigData>>> map;
+	unordered_map<size_t,vector<const_UnitigColorMap<UnitigData>>> map;
 
 	//1) search for all k-mer hits inside of neighborhood defined by distance, save references to all unitigs covered
 	//ToDo: we will only consider exact matches for now!
@@ -305,13 +305,39 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 			for (UnitigColors::const_iterator it = uc->begin(ucm); it != uc->end(); it.nextColor()) {
 				const size_t color = it.getColorID();
 
+				//check if color already in map
+				//ToDo: do we need to do that?
+				const std::unordered_map<size_t, vector<const_UnitigColorMap<UnitigData>>>::const_iterator iter = map.find(color);
+
+				if (iter == map.end()) {
+					vector<const_UnitigColorMap<UnitigData>> newset;
+					map.insert({color, newset});
+					map[color].push_back(ucm);
+				} else if (map[color].back().getUnitigHead() != ucm.getUnitigHead()){
+					map[color].push_back(ucm);
+				}
 			}
 
 		}
 
+	}
 
+
+	//2) for each color, give me a path!
+	//ToDo: the path will be the same for some colors, or even subpaths, so they should be discovered simultanously!
+	for(const auto& color : map){
+		//first, give me the numbr of unitigs for each color...
+		cout << "color: " << color.first << endl;
+		cout << "#unitigs: " << color.second.size() << endl;
+		for (auto& elem : color.second){
+			cout << "seq: " << elem.referenceUnitigToString() << endl;
+
+		}
 
 	}
+
+
+
 
 
 
