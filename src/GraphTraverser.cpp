@@ -329,10 +329,43 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 		//first, give me the numbr of unitigs for each color...
 		cout << "color: " << color.first << endl;
 		cout << "#unitigs: " << color.second.size() << endl;
-		for (auto& elem : color.second){
-			cout << "seq: " << elem.referenceUnitigToString() << endl;
 
+		//for each UnitigMap in a color, check if any successor is also in the list!
+		for (auto& map : color.second){
+			cout << "seq: " << map.referenceUnitigToString() << endl;
+			for (const auto& successor : map.getSuccessors()){
+				bool colorFound = false;
+
+				const DataAccessor<UnitigData>* da = successor.getData();
+				const UnitigColors* uc = da->getUnitigColors(successor);
+				for (UnitigColors::const_iterator it = uc->begin(successor); it != uc->end(); it.nextColor()) {
+					if (it.getColorID() == color.first){
+						colorFound = true;
+					}
+				}
+
+				if (colorFound){
+					cout << "color found" << endl;
+				}
+
+				if(std::find(color.second.begin(), color.second.end(), successor) != color.second.end()) {
+				    cout << "map in list" << endl;
+				}
+
+			}
 		}
+
+
+		//Strategy: for each color, starting from the first unitig in the list, find all successors of the same color
+		//if there is only one successor of the same color, add it to the path and pop it from the seed list if possible
+		//otherwise, follow each successor path until a unitig from the seed list is found. Ignore the other path(s).
+		//stop if the last unitig from the seed list is found
+
+		//ToDo: Afterwards, for each color, we might want to extent the path at the end or the beginning...but how far?
+		//We can first extend it following the longest color path? How can I anchor that?
+
+
+
 
 	}
 
