@@ -62,6 +62,8 @@ public:
 
 	void extractSubGraph(const string& query, const int k, const int distance);
 
+	void pathLength(const unordered_map<size_t,vector<UnitigColorMap<UnitigData>>>& all_paths);
+
 	/*
 	 * Find the unitig that corresponds to this string, and report all colors of this unitig
 	 */

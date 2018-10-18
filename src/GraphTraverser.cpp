@@ -284,7 +284,7 @@ void GraphTraverser::exploreSubgraph(const string& s) const {
 
 void GraphTraverser::extractSubGraph(const string& query, const int k, const int distance) {
 
-	unordered_map<size_t,vector<const_UnitigColorMap<UnitigData>>> map;
+	unordered_map<size_t,vector<UnitigColorMap<UnitigData>>> map;
 
 	//1) search for all k-mer hits inside of neighborhood defined by distance, save references to all unitigs covered
 	//ToDo: we will only consider exact matches for now!
@@ -292,7 +292,7 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 
 	for(KmerIterator it_km(query_str), it_km_end; it_km != it_km_end; ++it_km){
 
-		const const_UnitigColorMap<UnitigData> ucm = cdbg.find(it_km->first);
+		const UnitigColorMap<UnitigData> ucm = cdbg.find(it_km->first);
 
 		if (!ucm.isEmpty) {
 
@@ -307,10 +307,10 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 
 				//check if color already in map
 				//ToDo: do we need to do that?
-				const std::unordered_map<size_t, vector<const_UnitigColorMap<UnitigData>>>::const_iterator iter = map.find(color);
+				const std::unordered_map<size_t, vector<UnitigColorMap<UnitigData>>>::iterator iter = map.find(color);
 
 				if (iter == map.end()) {
-					vector<const_UnitigColorMap<UnitigData>> newset;
+					vector<UnitigColorMap<UnitigData>> newset;
 					map.insert({color, newset});
 					map[color].push_back(ucm);
 				} else if (map[color].back().getUnitigHead() != ucm.getUnitigHead()){
@@ -354,7 +354,7 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 
 			}
 		}
-
+	}
 
 		//Strategy: for each color, starting from the first unitig in the list, find all successors of the same color
 		//if there is only one successor of the same color, add it to the path and pop it from the seed list if possible
@@ -365,20 +365,95 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 		//We can first extend it following the longest color path? How can I anchor that?
 
 
+	unordered_map<size_t,vector<UnitigColorMap<UnitigData>>> all_paths;
+
+	for(const auto& color : map){
+		//add this node to the collected path
+		vector<UnitigColorMap<UnitigData>> path;
+
+		vector<UnitigColorMap<UnitigData>> current = color.second;
+		std::reverse(current.begin(),current.end());
+
+		while (! current.empty()){
+			cout << current.size() << endl;
+			UnitigColorMap<UnitigData> first = current.back();
+			current.pop_back();
+
+			path.push_back(first);
+
+			//find all successors with the same color
+			vector<UnitigColorMap<UnitigData>> sameCol;
+			for (const auto& successor : first.getSuccessors()){
+				const DataAccessor<UnitigData>* da = successor.getData();
+				const UnitigColors* uc = da->getUnitigColors(successor);
+
+				for (UnitigColors::const_iterator it = uc->begin(successor); it != uc->end(); it.nextColor()) {
+					if (it.getColorID() == color.first){
+						sameCol.push_back(successor);
+					}
+				}
+			}
+
+			if (sameCol.empty()){
+				//there is no successor of the same color, this path stops here
+				cout << "no successor!" << endl;
+
+				//Note: the while expression will still try to extend other seed unitigs for this color!
 
 
+
+
+			} else if (sameCol.size() == 1){
+				if (! current.empty() && sameCol.back().getUnitigHead() == current.back().getUnitigHead()){
+					//the single successor is already in the seed list
+				} else if (! current.empty()){
+					//the successor is not in the list, can fill a gap between seed unitigs
+					current.push_back(sameCol.back());
+				}
+			} else {
+				cout << "more than 2!" << endl;
+			}
+		}
+		all_paths[color.first] = path;
 	}
 
 
+	//different strategy: add seed unitigs to a new cdbg
+	//add missing unitigs completing paths to new cdbg
+	//in the end, the new cdbg should contain one CC
+	//write new cdbg to gfa file!
 
+	GraphTraverser::pathLength(all_paths);
 
+	//take the length of the query as reference
+	//previously, for each color, record the length of the prefix of the reference before the first seed hit
+	//(record the length of the reference after the last seed hit as well?!)
+	//for each color, extend the path of seeds in both ends until the length distance to the reference is minimized
 
 
 }
 
 
 
+void GraphTraverser::pathLength(const unordered_map<size_t,vector<UnitigColorMap<UnitigData>>>& all_paths) {
 
+	//compute the length of each of the paths
+		for (const auto& color : all_paths){
+			vector<UnitigColorMap<UnitigData>> current = color.second;
+			int length = 0;
+			for(auto& unitig : current){
+				int unitig_length = unitig.referenceUnitigToString().size();
+				if (length == 0){
+					length = unitig_length;
+				} else {
+					length += unitig_length - 31;
+				}
+			}
+
+			cout << color.first << endl;
+			cout << length << endl;
+		}
+}
 
 
 
