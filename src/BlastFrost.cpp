@@ -144,13 +144,13 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 }
 
 
-int augmentGFA(GraphTraverser& tra, const string& gfaPrefix, const size_t& num_colors){
+int augmentGFA(GraphTraverser& tra, const string& gfaFile, const size_t& num_colors){
 	// open gfa, read line by line, immadiately write to augmented file
 
-	std::ofstream output(gfaPrefix+"_colored.gfa",std::ofstream::binary);
+	std::ofstream output(gfaFile+"_colored.gfa",std::ofstream::binary);
 	cout << "Initialized output file" << endl;
 
-	ifstream input(gfaPrefix+".gfa");
+	ifstream input(gfaFile);
 	if(!input.good()){
 		cout << "Cannot open gfa graph file." << endl;
 		exit (EXIT_FAILURE);
@@ -216,7 +216,7 @@ int augmentGFA(GraphTraverser& tra, const string& gfaPrefix, const size_t& num_c
 	output.close();
 
 	//write the color index to separate file
-	std::ofstream index(gfaPrefix+".index",std::ofstream::binary);
+	std::ofstream index(gfaFile+".index",std::ofstream::binary);
 	std::map<int, string> ordered(indexHash.begin(), indexHash.end());
 	for(auto it = ordered.begin(); it != ordered.end(); ++it){
 	     index << it->second << " ";
@@ -347,8 +347,8 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 		for(int i = start; i <= end; i++) {
 
 			pair<string,string> seq = fasta[i];
-			unordered_map<size_t,vector<int>> res = tra.search(seq.second, k, d);
-			cout << res.size() << endl;
+			unordered_map<size_t,vector<int>> res = tra.search(seq.second, k, d, seq.first);
+			//cout << res.size() << endl;
 			//tra.remove_singletonHits(res);
 
 
@@ -374,6 +374,12 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 					result.hitrun = hit.second;
 					results.push_back(result);
 
+				} else {
+//					cout << "query hit not reported " << seq.first << " " << hit.first << " " << pvalue2 << endl;
+//					for (auto& elem : hit.second) {
+//						cout << elem << " ";
+//					}
+//					cout << endl;
 				}
 
 			}
@@ -426,7 +432,9 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 
 	vector<searchResult> results;
 	for(auto& seq: fasta) {
-		unordered_map<size_t,vector<int>> res = tra.search(seq.second, k, d);
+		unordered_map<size_t,vector<int>> res = tra.search(seq.second, k, d, seq.first);
+
+
 		//tra.remove_singletonHits(res);
 
 
@@ -617,7 +625,7 @@ int main(int argc, char **argv) {
 
 		//const int avg_genomeSize = estimate_avg_genomeSize(opt.filename_seq_in);
 		const int avg_genomeSize = cdbg.size();
-		cout << avg_genomeSize << endl;
+		//cout << avg_genomeSize << endl;
 		const size_t numberStrains = cdbg.getNbColors();
 		double db_size = numberStrains*avg_genomeSize;
 
@@ -712,15 +720,15 @@ int main(int argc, char **argv) {
 			else {
 				//we have only one thread to run, but could have multiple query files
 				for(auto& queryfile : opt.queryfiles){
-					//run_subsample_completeQuery(q, db_size, k, opt.d, queryfile, tra, opt.outprefix);
-					//writeResults_multipleFiles(opt.outprefix,q,cdbg);
+					run_subsample_completeQuery(q, db_size, k, opt.d, queryfile, tra, opt.outprefix);
+					writeResults_multipleFiles(opt.outprefix,q,cdbg);
 
-					cout << "run subgraph extraction" << endl;
-					vector<pair<string,string>> fasta = parseFasta(queryfile, k);
+					//cout << "run subgraph extraction" << endl;
+					//vector<pair<string,string>> fasta = parseFasta(queryfile, k);
 
-					for(auto& seq: fasta) {
-						tra.extractSubGraph(seq.second, k, opt.d);
-					}
+					//for(auto& seq: fasta) {
+					//	tra.extractSubGraph(seq.second, k, opt.d);
+					//}
 				}
 			}
 		}

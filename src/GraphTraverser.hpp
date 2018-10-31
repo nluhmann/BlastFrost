@@ -42,7 +42,7 @@ public:
 
 	GraphTraverser(ColoredCDBG<UnitigData>& cdbg);
 
-	unordered_map<size_t,vector<int>> search(const string& query, const int k, const int ndistance) const;
+	unordered_map<size_t,vector<int>> search(const string& query, const int k, const int ndistance, const string& query_name) const;
 
 	//void writeKmerPresence(vector<pair<Kmer,set<string>>> results, string& resfile);
 
@@ -62,7 +62,7 @@ public:
 
 	void extractSubGraph(const string& query, const int k, const int distance);
 
-	void pathLength(const unordered_map<size_t,vector<UnitigColorMap<UnitigData>>>& all_paths);
+	void pathLength(const unordered_map<size_t,vector<Kmer>>& all_paths, const int& ref_length);
 
 	/*
 	 * Find the unitig that corresponds to this string, and report all colors of this unitig

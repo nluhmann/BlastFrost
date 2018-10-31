@@ -284,21 +284,22 @@ void GraphTraverser::exploreSubgraph(const string& s) const {
 
 void GraphTraverser::extractSubGraph(const string& query, const int k, const int distance) {
 
-	unordered_map<size_t,vector<UnitigColorMap<UnitigData>>> map;
+	//ToDo: this should be a vector of Kmer!
+	unordered_map<size_t,vector<Kmer>> map;
 
 	//1) search for all k-mer hits inside of neighborhood defined by distance, save references to all unitigs covered
 	//ToDo: we will only consider exact matches for now!
 	const char *query_str = query.c_str();
+	int startcounter = 0;
 
 	for(KmerIterator it_km(query_str), it_km_end; it_km != it_km_end; ++it_km){
-
+		startcounter += 1;
 		const UnitigColorMap<UnitigData> ucm = cdbg.find(it_km->first);
 
 		if (!ucm.isEmpty) {
 
 			const DataAccessor<UnitigData>* da = ucm.getData();
 			const UnitigColors* uc = da->getUnitigColors(ucm);
-
 
 			//for each color, store all UnitigColorMap references as a set
 			//ToDo: we can likely speed this up!
@@ -307,54 +308,56 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 
 				//check if color already in map
 				//ToDo: do we need to do that?
-				const std::unordered_map<size_t, vector<UnitigColorMap<UnitigData>>>::iterator iter = map.find(color);
+				const std::unordered_map<size_t, vector<Kmer>>::iterator iter = map.find(color);
+				Kmer head = ucm.getUnitigHead();
 
 				if (iter == map.end()) {
-					vector<UnitigColorMap<UnitigData>> newset;
+					cout << color << endl;
+					cout << startcounter << endl;
+
+					vector<Kmer> newset;
 					map.insert({color, newset});
-					map[color].push_back(ucm);
-				} else if (map[color].back().getUnitigHead() != ucm.getUnitigHead()){
-					map[color].push_back(ucm);
+					map[color].push_back(head);
+				} else if (map[color].back() != head){
+					map[color].push_back(head);
 				}
 			}
-
 		}
-
 	}
 
 
 	//2) for each color, give me a path!
 	//ToDo: the path will be the same for some colors, or even subpaths, so they should be discovered simultanously!
-	for(const auto& color : map){
-		//first, give me the numbr of unitigs for each color...
-		cout << "color: " << color.first << endl;
-		cout << "#unitigs: " << color.second.size() << endl;
-
-		//for each UnitigMap in a color, check if any successor is also in the list!
-		for (auto& map : color.second){
-			cout << "seq: " << map.referenceUnitigToString() << endl;
-			for (const auto& successor : map.getSuccessors()){
-				bool colorFound = false;
-
-				const DataAccessor<UnitigData>* da = successor.getData();
-				const UnitigColors* uc = da->getUnitigColors(successor);
-				for (UnitigColors::const_iterator it = uc->begin(successor); it != uc->end(); it.nextColor()) {
-					if (it.getColorID() == color.first){
-						colorFound = true;
-					}
-				}
-
-				if (colorFound){
-					cout << "color found" << endl;
-				}
-
-				if(std::find(color.second.begin(), color.second.end(), successor) != color.second.end()) {
-				    cout << "map in list" << endl;
-				}
-
-			}
-		}
-	}
+//	for(const auto& color : map){
+//		//first, give me the numbr of unitigs for each color...
+//		cout << "color: " << color.first << endl;
+//		cout << "#unitigs: " << color.second.size() << endl;
+//
+//		//for each UnitigMap in a color, check if any successor is also in the list!
+//		for (auto& map : color.second){
+//			cout << "seq: " << map.referenceUnitigToString() << endl;
+//			for (const auto& successor : map.getSuccessors()){
+//				bool colorFound = false;
+//
+//				const DataAccessor<UnitigData>* da = successor.getData();
+//				const UnitigColors* uc = da->getUnitigColors(successor);
+//				for (UnitigColors::const_iterator it = uc->begin(successor); it != uc->end(); it.nextColor()) {
+//					if (it.getColorID() == color.first){
+//						colorFound = true;
+//					}
+//				}
+//
+//				if (colorFound){
+//					cout << "color found" << endl;
+//				}
+//
+//				if(std::find(color.second.begin(), color.second.end(), successor) != color.second.end()) {
+//				    cout << "map in list" << endl;
+//				}
+//
+//			}
+//		}
+//	}
 
 		//Strategy: for each color, starting from the first unitig in the list, find all successors of the same color
 		//if there is only one successor of the same color, add it to the path and pop it from the seed list if possible
@@ -365,31 +368,35 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 		//We can first extend it following the longest color path? How can I anchor that?
 
 
-	unordered_map<size_t,vector<UnitigColorMap<UnitigData>>> all_paths;
-
+	unordered_map<size_t,vector<Kmer>> all_paths;
+	cout << "complete paths" << endl;
 	for(const auto& color : map){
 		//add this node to the collected path
-		vector<UnitigColorMap<UnitigData>> path;
+		vector<Kmer> path;
 
-		vector<UnitigColorMap<UnitigData>> current = color.second;
+		vector<Kmer> current = color.second;
 		std::reverse(current.begin(),current.end());
 
+		cout << color.first << endl;
 		while (! current.empty()){
-			cout << current.size() << endl;
-			UnitigColorMap<UnitigData> first = current.back();
+			//cout << current.size() << endl;
+			Kmer first = current.back();
 			current.pop_back();
 
 			path.push_back(first);
 
 			//find all successors with the same color
-			vector<UnitigColorMap<UnitigData>> sameCol;
-			for (const auto& successor : first.getSuccessors()){
+			vector<Kmer> sameCol;
+
+			const UnitigColorMap<UnitigData> ucm = cdbg.find(first);
+
+			for (const auto& successor : ucm.getSuccessors()){
 				const DataAccessor<UnitigData>* da = successor.getData();
 				const UnitigColors* uc = da->getUnitigColors(successor);
 
 				for (UnitigColors::const_iterator it = uc->begin(successor); it != uc->end(); it.nextColor()) {
 					if (it.getColorID() == color.first){
-						sameCol.push_back(successor);
+						sameCol.push_back(successor.getUnitigHead());
 					}
 				}
 			}
@@ -404,8 +411,9 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 
 
 			} else if (sameCol.size() == 1){
-				if (! current.empty() && sameCol.back().getUnitigHead() == current.back().getUnitigHead()){
+				if (! current.empty() && sameCol.back() == current.back()){
 					//the single successor is already in the seed list
+					cout << "seed already in list" << endl;
 				} else if (! current.empty()){
 					//the successor is not in the list, can fill a gap between seed unitigs
 					current.push_back(sameCol.back());
@@ -423,7 +431,7 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 	//in the end, the new cdbg should contain one CC
 	//write new cdbg to gfa file!
 
-	GraphTraverser::pathLength(all_paths);
+	GraphTraverser::pathLength(all_paths, query.size());
 
 	//take the length of the query as reference
 	//previously, for each color, record the length of the prefix of the reference before the first seed hit
@@ -431,18 +439,39 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 	//for each color, extend the path of seeds in both ends until the length distance to the reference is minimized
 
 
+
+	//at this point, assume we filled the prefix of the paths up already
+	//so we can fill up its suffix until we reach the approximate length of the reference
+
+	for(const auto& color : all_paths){
+
+
+
+
+
+	}
+
+
+
+
+
+	//to think about: output these unitigs as simple fasta for each color, then rebuild Bifrost graph with smaller k to get gfa file -> look at it in bandage
+
+
+
+
+
 }
 
 
 
-void GraphTraverser::pathLength(const unordered_map<size_t,vector<UnitigColorMap<UnitigData>>>& all_paths) {
-
+void GraphTraverser::pathLength(const unordered_map<size_t,vector<Kmer>>& all_paths, const int& ref_length) {
 	//compute the length of each of the paths
 		for (const auto& color : all_paths){
-			vector<UnitigColorMap<UnitigData>> current = color.second;
+			vector<Kmer> current = color.second;
 			int length = 0;
-			for(auto& unitig : current){
-				int unitig_length = unitig.referenceUnitigToString().size();
+			for(auto& head : current){
+				int unitig_length = cdbg.find(head).referenceUnitigToString().size();
 				if (length == 0){
 					length = unitig_length;
 				} else {
@@ -458,7 +487,7 @@ void GraphTraverser::pathLength(const unordered_map<size_t,vector<UnitigColorMap
 
 
 
-unordered_map<size_t,vector<int>> GraphTraverser::search(const string& query, const int k, const int ndistance) const {
+unordered_map<size_t,vector<int>> GraphTraverser::search(const string& query, const int k, const int ndistance, const string& query_name) const {
 
 	const size_t num_kmers = query.length() - k + 1;
 
@@ -486,14 +515,31 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(const string& query, co
 
 	for(KmerIterator it_km(query_str), it_km_end; it_km != it_km_end; ++it_km){
 
-		const const_UnitigColorMap<UnitigData> map = cdbg.find(it_km->first);
+
+		//const const_UnitigColorMap<UnitigData> map = cdbg.find(it_km->first);
+		UnitigColorMap<UnitigData> map = cdbg.find(it_km->first);
+
+		//It.nextColor() iterates over the first k-mer of each color in the mapping
+		//++it iterate over all pair (kmer pos, color) in the mapping
+
+		//For each ++it, you check if the k-mer position is the previous k-mer position + 1 or not
+		// Then you check the color
+
+		map.dist = 0;
+		map.len = map.size - Kmer::k + 1;
+		map.strand = true;
 
 		if (!map.isEmpty) {
 
 			const DataAccessor<UnitigData>* da = map.getData();
 			const UnitigColors* uc = da->getUnitigColors(map);
 
-			const bool copy = (!first && !wasEmpty && (uc == old_uc));
+
+			//const UnitigColors sub_uc = da->getSubUnitigColors(map);
+
+			bool copy = (!first && !wasEmpty && (uc == old_uc));
+
+			old_uc = uc;
 
 			if (copy) {
 
@@ -502,26 +548,29 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(const string& query, co
 
 					if (arr[color.first][kmer_count - 1] == 1) arr[color.first][kmer_count] = 1;
 				}
+
 			}
 			else {
 
 				first = false;
 
 				for (UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); it.nextColor()) {
-				//for (UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); ++it) {
+
 						const size_t color = it.getColorID();
 
-						if (uc->contains(map, color)){ //note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
+						//if (uc->contains(map, color)){ //note to self: the iterator goes through all colors of the unitig, but we want to only keep the ones that the kmer is really annotated with
 
 							const std::unordered_map<size_t, vector<int>>::const_iterator iter = arr.find(color);
 
 							if (iter == arr.end()) arr.insert({color, vector<int>(num_kmers, 0)});
 
 								arr[color][kmer_count] = 1;
-							}
-						}
+						//}
 
 				}
+
+
+			}
 
 
 
@@ -562,7 +611,7 @@ unordered_map<size_t,vector<int>> GraphTraverser::search(const string& query, co
 				}
 			}
 
-			old_uc = uc;
+
 		}
 		wasEmpty = map.isEmpty;
 
