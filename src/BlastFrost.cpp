@@ -720,15 +720,15 @@ int main(int argc, char **argv) {
 			else {
 				//we have only one thread to run, but could have multiple query files
 				for(auto& queryfile : opt.queryfiles){
-					run_subsample_completeQuery(q, db_size, k, opt.d, queryfile, tra, opt.outprefix);
-					writeResults_multipleFiles(opt.outprefix,q,cdbg);
+					//run_subsample_completeQuery(q, db_size, k, opt.d, queryfile, tra, opt.outprefix);
+					//writeResults_multipleFiles(opt.outprefix,q,cdbg);
 
-					//cout << "run subgraph extraction" << endl;
-					//vector<pair<string,string>> fasta = parseFasta(queryfile, k);
+					cout << "run subgraph extraction" << endl;
+					vector<pair<string,string>> fasta = parseFasta(queryfile, k);
 
-					//for(auto& seq: fasta) {
-					//	tra.extractSubGraph(seq.second, k, opt.d);
-					//}
+					for(auto& seq: fasta) {
+						tra.extractSubGraph(seq.second, k, opt.d);
+					}
 				}
 			}
 		}

@@ -294,15 +294,19 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 
 	for(KmerIterator it_km(query_str), it_km_end; it_km != it_km_end; ++it_km){
 		startcounter += 1;
-		const UnitigColorMap<UnitigData> ucm = cdbg.find(it_km->first);
+		UnitigColorMap<UnitigData> ucm = cdbg.find(it_km->first);
+
+		ucm.dist = 0;
+		ucm.len = ucm.size - Kmer::k + 1;
+		ucm.strand = true;
+
 
 		if (!ucm.isEmpty) {
 
 			const DataAccessor<UnitigData>* da = ucm.getData();
 			const UnitigColors* uc = da->getUnitigColors(ucm);
 
-			//for each color, store all UnitigColorMap references as a set
-			//ToDo: we can likely speed this up!
+
 			for (UnitigColors::const_iterator it = uc->begin(ucm); it != uc->end(); it.nextColor()) {
 				const size_t color = it.getColorID();
 
@@ -312,8 +316,8 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 				Kmer head = ucm.getUnitigHead();
 
 				if (iter == map.end()) {
-					cout << color << endl;
-					cout << startcounter << endl;
+					//cout << color << endl;
+					//cout << startcounter << endl;
 
 					vector<Kmer> newset;
 					map.insert({color, newset});
@@ -334,9 +338,11 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 //		cout << "#unitigs: " << color.second.size() << endl;
 //
 //		//for each UnitigMap in a color, check if any successor is also in the list!
-//		for (auto& map : color.second){
-//			cout << "seq: " << map.referenceUnitigToString() << endl;
-//			for (const auto& successor : map.getSuccessors()){
+//		for (auto& km : color.second){
+//			cout << "kmer: " << km.toString() << endl;
+//
+//			UnitigColorMap<UnitigData> ucm = cdbg.find(km);
+//			for (const auto& successor : ucm.getSuccessors()){
 //				bool colorFound = false;
 //
 //				const DataAccessor<UnitigData>* da = successor.getData();
@@ -351,7 +357,10 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 //					cout << "color found" << endl;
 //				}
 //
-//				if(std::find(color.second.begin(), color.second.end(), successor) != color.second.end()) {
+//				Kmer succ_km = successor.getUnitigHead();
+//
+//
+//				if(std::find(color.second.begin(), color.second.end(), succ_km) != color.second.end()) {
 //				    cout << "map in list" << endl;
 //				}
 //
@@ -388,9 +397,11 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 			//find all successors with the same color
 			vector<Kmer> sameCol;
 
-			const UnitigColorMap<UnitigData> ucm = cdbg.find(first);
+			UnitigColorMap<UnitigData> ucm = cdbg.find(first);
+
 
 			for (const auto& successor : ucm.getSuccessors()){
+
 				const DataAccessor<UnitigData>* da = successor.getData();
 				const UnitigColors* uc = da->getUnitigColors(successor);
 
@@ -411,12 +422,15 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 
 
 			} else if (sameCol.size() == 1){
-				if (! current.empty() && sameCol.back() == current.back()){
+				if ((!current.empty()) && sameCol.back() == current.back()){
 					//the single successor is already in the seed list
 					cout << "seed already in list" << endl;
-				} else if (! current.empty()){
+				} else if ((!current.empty()) && ( std::find(path.begin(), path.end(), sameCol.back()) == path.end())){
+
 					//the successor is not in the list, can fill a gap between seed unitigs
 					current.push_back(sameCol.back());
+					cout << "add succ to list" << endl;
+					cout << sameCol.back().toString() << endl;
 				}
 			} else {
 				cout << "more than 2!" << endl;
@@ -442,15 +456,6 @@ void GraphTraverser::extractSubGraph(const string& query, const int k, const int
 
 	//at this point, assume we filled the prefix of the paths up already
 	//so we can fill up its suffix until we reach the approximate length of the reference
-
-	for(const auto& color : all_paths){
-
-
-
-
-
-	}
-
 
 
 
