@@ -6,6 +6,7 @@
 #include <mutex>
 #include <atomic>
 #include <unordered_map>
+#include <sys/stat.h>
 
 #include <bifrost/ColoredCDBG.hpp>
 #include "SubGraphTraverser.hpp"
@@ -81,13 +82,16 @@ struct searchResult {
   vector<int> hitrun;
 } ;
 
-
+inline bool exists_test (const std::string& name) {
+  struct stat buffer;
+  return (stat (name.c_str(), &buffer) == 0);
+}
 
 void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 
 	int oc; //option character
 
-	while ((oc = getopt(argc, argv, "o:t:q:g:f:k:d:l:r:vc")) != -1) {
+	while ((oc = getopt(argc, argv, "o:t:q:g:f:k:d:l:r:s:vc")) != -1) {
 		switch (oc) {
 		//mandatory arguments
 		case 'g':
@@ -127,7 +131,6 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 		case 's':
 			opt.avg = atof(optarg);
 			break;
-
 		//undocumented testing arguments
 		case 'l':
 			opt.s1 = optarg;
@@ -164,10 +167,24 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 		cout << "No input file given to load Bifrost graph colors!" << endl;
 		PrintUsage();
 		exit (EXIT_FAILURE);
+	} else if (! exists_test(opt.queryfiles[0])){
+		cout << "Cannot read query file." << endl;
+		exit (EXIT_FAILURE);
 	}
 
 
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 int augmentGFA(SubGraphTraverser& tra, const string& gfaFile, const size_t& num_colors, bool verbose){
@@ -632,7 +649,7 @@ int main(int argc, char **argv) {
 				cout << "Estimate for avg. genome size: " << avg_genomeSize << endl;
 			}
 		} else {
-			avg_genomeSize = opt.avg * 1000;
+			avg_genomeSize = opt.avg * 1000000;
 			if(opt.verbose){
 				cout << "Input for avg. genome size: " << avg_genomeSize << endl;
 			}
