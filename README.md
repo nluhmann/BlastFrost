@@ -1,7 +1,7 @@
 # BlastFrost
 
 ## Requirements:
-* https://www.gnu.org/software/gsl/
+* Bifrost graph as input
 
 
 ## Install:
