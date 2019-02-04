@@ -21,7 +21,7 @@ SubGraphTraverser::SubGraphTraverser(ColoredCDBG<UnitigData>& graph) : cdbg(grap
 // FUNC 2: Explore subgraph that contains queried sequence, i.e. all variants of a gene queried against the graph
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SubGraphTraverser::extractSubGraph(const string& query, const int k, const int distance) {
+void SubGraphTraverser::extractSubGraph(const string& query, const int k, const int distance, string& outprefix, string& queryfile) {
 
 	//ToDo: this should be a vector of Kmer!
 	unordered_map<size_t,vector<Kmer>> map;
@@ -35,9 +35,10 @@ void SubGraphTraverser::extractSubGraph(const string& query, const int k, const 
 		startcounter += 1;
 		UnitigColorMap<UnitigData> ucm = cdbg.find(it_km->first);
 
+
 		ucm.dist = 0;
 		ucm.len = ucm.size - Kmer::k + 1;
-		ucm.strand = true;
+		//ucm.strand = true;
 
 
 		if (!ucm.isEmpty) {
@@ -52,7 +53,8 @@ void SubGraphTraverser::extractSubGraph(const string& query, const int k, const 
 				//check if color already in map
 				//ToDo: do we need to do that?
 				const std::unordered_map<size_t, vector<Kmer>>::iterator iter = map.find(color);
-				Kmer head = ucm.getUnitigHead();
+				//Kmer head = ucm.getUnitigHead();
+				Kmer head = ucm.getMappedHead();
 
 				if (iter == map.end()) {
 					//cout << color << endl;
@@ -61,51 +63,24 @@ void SubGraphTraverser::extractSubGraph(const string& query, const int k, const 
 					vector<Kmer> newset;
 					map.insert({color, newset});
 					map[color].push_back(head);
-				} else if (map[color].back() != head){
+
+				} else if (map[color].back() != head){ //check if this unitig has been found already
 					map[color].push_back(head);
 				}
 			}
 		}
 	}
 
-
-	//2) for each color, give me a path!
-	//ToDo: the path will be the same for some colors, or even subpaths, so they should be discovered simultanously!
+	//for each color, output last unitig
 //	for(const auto& color : map){
-//		//first, give me the numbr of unitigs for each color...
-//		cout << "color: " << color.first << endl;
-//		cout << "#unitigs: " << color.second.size() << endl;
+//		vector<Kmer> current = color.second;
+//		cout << "color: " << cdbg.getColorName(color.first) << endl;
 //
-//		//for each UnitigMap in a color, check if any successor is also in the list!
-//		for (auto& km : color.second){
-//			cout << "kmer: " << km.toString() << endl;
-//
-//			UnitigColorMap<UnitigData> ucm = cdbg.find(km);
-//			for (const auto& successor : ucm.getSuccessors()){
-//				bool colorFound = false;
-//
-//				const DataAccessor<UnitigData>* da = successor.getData();
-//				const UnitigColors* uc = da->getUnitigColors(successor);
-//				for (UnitigColors::const_iterator it = uc->begin(successor); it != uc->end(); it.nextColor()) {
-//					if (it.getColorID() == color.first){
-//						colorFound = true;
-//					}
-//				}
-//
-//				if (colorFound){
-//					cout << "color found" << endl;
-//				}
-//
-//				Kmer succ_km = successor.getUnitigHead();
-//
-//
-//				if(std::find(color.second.begin(), color.second.end(), succ_km) != color.second.end()) {
-//				    cout << "map in list" << endl;
-//				}
-//
-//			}
-//		}
+//		cout << cdbg.find(current.back()).referenceUnitigToString() << endl;
+//		cout << cdbg.find(current.front()).referenceUnitigToString() << endl;
 //	}
+
+
 
 		//Strategy: for each color, starting from the first unitig in the list, find all successors of the same color
 		//if there is only one successor of the same color, add it to the path and pop it from the seed list if possible
@@ -125,7 +100,7 @@ void SubGraphTraverser::extractSubGraph(const string& query, const int k, const 
 		vector<Kmer> current = color.second;
 		std::reverse(current.begin(),current.end());
 
-		cout << color.first << endl;
+		//cout << color.first << endl;
 		while (! current.empty()){
 			//cout << current.size() << endl;
 			Kmer first = current.back();
@@ -143,10 +118,12 @@ void SubGraphTraverser::extractSubGraph(const string& query, const int k, const 
 
 				const DataAccessor<UnitigData>* da = successor.getData();
 				const UnitigColors* uc = da->getUnitigColors(successor);
+				//Kmer head = successor.getUnitigHead();
+				Kmer head = successor.getMappedHead();
 
 				for (UnitigColors::const_iterator it = uc->begin(successor); it != uc->end(); it.nextColor()) {
 					if (it.getColorID() == color.first){
-						sameCol.push_back(successor.getUnitigHead());
+						sameCol.push_back(head);
 					}
 				}
 			}
@@ -174,6 +151,7 @@ void SubGraphTraverser::extractSubGraph(const string& query, const int k, const 
 				cout << "more than 2!" << endl;
 			}
 		}
+		//std::reverse(path.begin(),path.end());
 		all_paths[color.first] = path;
 	}
 
@@ -183,7 +161,18 @@ void SubGraphTraverser::extractSubGraph(const string& query, const int k, const 
 	//in the end, the new cdbg should contain one CC
 	//write new cdbg to gfa file!
 
-	SubGraphTraverser::pathLength(all_paths, query.size());
+	//SubGraphTraverser::pathLength(all_paths, query.size());
+
+	unordered_map<size_t,std::string> paths = SubGraphTraverser::pathSequence(all_paths);
+	SubGraphTraverser::printPaths(outprefix, queryfile, paths);
+
+	SubGraphTraverser::testPath(all_paths);
+
+
+
+
+
+
 
 	//take the length of the query as reference
 	//previously, for each color, record the length of the prefix of the reference before the first seed hit
@@ -211,21 +200,96 @@ void SubGraphTraverser::pathLength(const unordered_map<size_t,vector<Kmer>>& all
 		for (const auto& color : all_paths){
 			vector<Kmer> current = color.second;
 			int length = 0;
+			cout << "color:" << color.first << endl;
 			for(auto& head : current){
 				int unitig_length = cdbg.find(head).referenceUnitigToString().size();
+
 				if (length == 0){
 					length = unitig_length;
 				} else {
-					length += unitig_length - 31;
+					length += unitig_length - 30;
 				}
 			}
-
-			cout << color.first << endl;
 			cout << length << endl;
 		}
 }
 
 
+
+unordered_map<size_t,std::string> SubGraphTraverser::pathSequence(const unordered_map<size_t,vector<Kmer>>& all_paths) {
+	unordered_map<size_t,std::string> all_paths_sequences;
+	for (const auto& color : all_paths) {
+		vector<Kmer> current = color.second;
+		std::string result;
+
+		bool first = true;
+		for(auto& head : current){
+			UnitigColorMap<UnitigData> ucm = cdbg.find(head);
+			ucm.dist = 0;
+			ucm.len = ucm.size - Kmer::k + 1;
+
+			if (first){
+				result += ucm.mappedSequenceToString();
+				first = false;
+			} else {
+				string suff = ucm.mappedSequenceToString().substr(30);
+				result += suff;
+			}
+		}
+		all_paths_sequences[color.first] = result;
+	}
+	return all_paths_sequences;
+}
+
+
+
+
+void SubGraphTraverser::testPath(const unordered_map<size_t,vector<Kmer>>& all_paths) {
+
+	//for each path, check if it continuous in the graph, i.e. the unitig overlaps are correct!
+	for (const auto& color : all_paths) {
+		vector<Kmer> current = color.second;
+		string previous_suffix;
+		string previous_seq;
+		for (auto& head : current){
+
+			UnitigColorMap<UnitigData> ucm = cdbg.find(head);
+
+			ucm.dist = 0;
+			ucm.len = ucm.size - Kmer::k + 1;
+			//ucm.strand = true;
+
+			string next = ucm.mappedSequenceToString();
+
+			string next_prefix = next.substr(0,30);
+			if (! previous_suffix.empty()){
+				if (! previous_suffix.compare(next_prefix) == 0){
+					cout << "ERROR path not continuous, suffix: " << previous_suffix << endl;
+					cout << "ERROR path not continuous, prefix: " << next_prefix << endl;
+				}
+			}
+			previous_seq = next;
+			previous_suffix = next.substr(next.size() - 30);
+		}
+	}
+}
+
+
+
+
+void SubGraphTraverser::printPaths(string& outprefix, string& query, unordered_map<size_t,std::string>& paths) {
+//output paths in fasta format, encode color name and paths length in header
+
+	std::ofstream output(outprefix+"_"+query+"_subgraph.fasta",std::ios_base::out);
+
+	for (const auto& color : paths){
+		string color_name = cdbg.getColorName(color.first);
+		output << ">" << color_name << "_len_" << color.second.length() << endl;
+		output << color.second << endl;
+	}
+
+	output.close();
+}
 
 
 

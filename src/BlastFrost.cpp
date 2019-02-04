@@ -64,11 +64,12 @@ struct searchOptions {
 	int k;
 	int d;
 	bool enhanceGFA;
+	bool extractSubgraph;
 	double avg;
 	string s1;
 	string s2;
 
-	searchOptions() : nb_threads(1), verbose(false), outprefix("output"), k(31), d(0), enhanceGFA(false), avg(0) {};
+	searchOptions() : nb_threads(1), verbose(false), outprefix("output"), k(31), d(0), enhanceGFA(false), avg(0), extractSubgraph(false) {};
 } ;
 
 
@@ -91,7 +92,7 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 
 	int oc; //option character
 
-	while ((oc = getopt(argc, argv, "o:t:q:g:f:k:d:l:r:s:vc")) != -1) {
+	while ((oc = getopt(argc, argv, "o:t:q:g:f:k:d:l:r:s:evc")) != -1) {
 		switch (oc) {
 		//mandatory arguments
 		case 'g':
@@ -138,6 +139,9 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 		case 'r':
 			opt.s2 = optarg;
 			break;
+		case 'e':
+			opt.extractSubgraph = true;
+			break;
 
 		//invalid option
 		case ':':
@@ -174,13 +178,6 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 
 
 }
-
-
-
-
-
-
-
 
 
 
@@ -611,6 +608,35 @@ int main(int argc, char **argv) {
 			augmentGFA(tra,opt.graphfile,cdbg.getNbColors(), opt.verbose);
 
 		//TESTING/ IN DEVELOPMENT
+		} else if (opt.extractSubgraph){
+
+			SubGraphTraverser tra(cdbg);
+
+
+			if(opt.verbose){
+				cout << "run subgraph extraction" << endl;
+			}
+
+			for(auto& queryfile : opt.queryfiles){
+				vector<pair<string,string>> fasta = parseFasta(queryfile, opt.k, opt.verbose);
+
+
+				std::string delim = "/";
+				auto start = 0U;
+				auto end = queryfile.find(delim);
+				while (end != std::string::npos){
+					start = end + delim.length();
+					end = queryfile.find(delim, start);
+				}
+				string query = queryfile.substr(start, end);
+
+				for(auto& seq: fasta) {
+					tra.extractSubGraph(seq.second, opt.k, opt.d, opt.outprefix, query);
+				}
+			}
+
+
+		//TESTING/ IN DEVELOPMENT
 		} else if (opt.s1 != "") {
 			if(opt.verbose){
 				cout << "---Explore subgraph between anchor sequences---" << endl;
@@ -739,15 +765,6 @@ int main(int argc, char **argv) {
 					run_subsample_completeQuery(q, db_size, k, opt.d, queryfile, que, opt.outprefix, opt.verbose);
 					writeResults_multipleFiles(opt.outprefix,q,cdbg);
 
-
-//					if(verbose){
-//						cout << "run subgraph extraction" << endl;
-//					}
-//					vector<pair<string,string>> fasta = parseFasta(queryfile, k);
-//
-//					for(auto& seq: fasta) {
-//						tra.extractSubGraph(seq.second, k, opt.d);
-//					}
 				}
 			}
 		}
