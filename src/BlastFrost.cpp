@@ -68,8 +68,9 @@ struct searchOptions {
 	double avg;
 	string s1;
 	string s2;
+	bool returnColors;
 
-	searchOptions() : nb_threads(1), verbose(false), outprefix("output"), k(31), d(0), enhanceGFA(false), avg(0), extractSubgraph(false) {};
+	searchOptions() : nb_threads(1), verbose(false), outprefix("output"), k(31), d(0), enhanceGFA(false), avg(0), extractSubgraph(false), returnColors(false) {};
 } ;
 
 
@@ -92,7 +93,7 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 
 	int oc; //option character
 
-	while ((oc = getopt(argc, argv, "o:t:q:g:f:k:d:l:r:s:evc")) != -1) {
+	while ((oc = getopt(argc, argv, "o:t:q:g:f:k:d:l:r:s:evca")) != -1) {
 		switch (oc) {
 		//mandatory arguments
 		case 'g':
@@ -142,6 +143,9 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 		case 'e':
 			opt.extractSubgraph = true;
 			break;
+		case 'a':
+			opt.returnColors = true;
+			break;
 
 		//invalid option
 		case ':':
@@ -171,10 +175,11 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 		cout << "No input file given to load Bifrost graph colors!" << endl;
 		PrintUsage();
 		exit (EXIT_FAILURE);
-	} else if (! exists_test(opt.queryfiles[0])){
-		cout << "Cannot read query file." << endl;
-		exit (EXIT_FAILURE);
 	}
+//	} else if (! exists_test(opt.queryfiles[0])){
+//		cout << "Cannot read query file." << endl;
+//		exit (EXIT_FAILURE);
+//	}
 
 
 }
@@ -322,7 +327,7 @@ vector<pair<string,string>> parseFasta(const string& queryfile, const int& k, bo
 	string content;
 	int counter = 0;
 
-	while( std::getline(input,line).good() ){
+	while( std::getline(input,line).good()) {
 		if(line.empty() || line[0] == '>'){
 			if(!name.empty()){
 				if(content.length() >= k){
@@ -346,7 +351,9 @@ vector<pair<string,string>> parseFasta(const string& queryfile, const int& k, bo
 			}
 		}
 	}
+
 	if(!name.empty()){
+		content += line;
 		fasta.push_back(std::make_pair(name,content));
 	}
 
@@ -354,6 +361,12 @@ vector<pair<string,string>> parseFasta(const string& queryfile, const int& k, bo
 	if(verbose){
 		cout << "### Number of sequences that will not be queried due to length smaller than k: " << counter << endl;
 	}
+
+	//cout << fasta.size() << endl;
+
+
+
+
 	return fasta;
 }
 
@@ -367,12 +380,13 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 		const int sigma = 4;
 
 		if (end == 0){
-			end = fasta.size()-1;
+			end = fasta.size();
 		}
 
 		vector<searchResult> results;
-		for(int i = start; i <= end; i++) {
+		for(int i = start; i < end; i++) {
 			pair<string,string> seq = fasta[i];
+
 			unordered_map<size_t,vector<int>> res = que.search(seq.second, k, d, seq.first);
 			//tra.remove_singletonHits(res);
 
@@ -558,20 +572,13 @@ void writeResults_multipleFiles(string& outprefix, queue<pair<string,vector<sear
 
 
 
-
-
-
-
-
-
-
 int main(int argc, char **argv) {
 
 	if (argc < 2) {
 		PrintUsage();
 	} else {
 
-		//const clock_t load_time = clock();
+		const clock_t load_time = clock();
 
 		searchOptions opt;
 		parseArgumentsNew(argc, argv, opt);
@@ -587,20 +594,35 @@ int main(int argc, char **argv) {
 		}
 
 
-		//cout << "Loading took " << (float( clock() - load_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
+		cout << "Loading took " << (float( clock() - load_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		//const clock_t begin_time = clock();
+		const clock_t begin_time = clock();
 
 
+		//Average genome size
+		int avg_genomeSize = 0;
+		if(opt.avg == 0){
+			avg_genomeSize = cdbg.size(); //overestimate?
+			if(opt.verbose){
+				cout << "Estimate for avg. genome size: " << avg_genomeSize << endl;
+			}
+		} else {
+			avg_genomeSize = opt.avg * 1000000;
+			if(opt.verbose){
+				cout << "Input for avg. genome size: " << avg_genomeSize << endl;
+			}
+		}
 
-
+		const size_t numberStrains = cdbg.getNbColors();
+		double db_size = numberStrains*avg_genomeSize;
 
 
 		//check which options are given by the user!
 		if (opt.enhanceGFA){
 
-			SubGraphTraverser tra(cdbg);
+			QuerySearch que(cdbg);
+			SubGraphTraverser tra(cdbg, db_size, que);
 
 			if(opt.verbose){
 				cout << "--- Augment GFA file with color infos ---" << endl;
@@ -609,8 +631,8 @@ int main(int argc, char **argv) {
 
 		//TESTING/ IN DEVELOPMENT
 		} else if (opt.extractSubgraph){
-
-			SubGraphTraverser tra(cdbg);
+			QuerySearch que(cdbg);
+			SubGraphTraverser tra(cdbg, db_size, que);
 
 
 			if(opt.verbose){
@@ -631,7 +653,8 @@ int main(int argc, char **argv) {
 				string query = queryfile.substr(start, end);
 
 				for(auto& seq: fasta) {
-					tra.extractSubGraph(seq.second, opt.k, opt.d, opt.outprefix, query);
+					unordered_map<size_t,vector<std::string>> paths = tra.extractSubGraph(seq.second, opt.k, opt.d, opt.outprefix, query);
+					tra.printPaths(opt.outprefix, query, paths, seq.first);
 				}
 			}
 
@@ -658,118 +681,127 @@ int main(int argc, char **argv) {
 			bub.exploreBubble(seq1[0].second, seq2[0].second, 1000);
 
 
-		//Standard graph query
+		//return all colors currently present in the graph
+		} else if (opt.returnColors){
+
+			if(opt.verbose){
+				cout << "return colors currently present in given graph" << endl;
+			}
+
+			vector<string> colors = cdbg.getColorNames();
+
+			std::ofstream output(opt.graphfile+"_current_colors",std::ofstream::out);
+			for(auto& col: colors){
+				output << col << endl;
+			}
+
+			output.close();
+
+
+			//Standard graph query
 		} else {
 
-		QuerySearch que(cdbg);
+			QuerySearch que(cdbg);
 
-		if(opt.verbose){
-			cout << "---Query graph for input sequences---" << endl;
-		}
-
-		//Average genome size
-		int avg_genomeSize = 0;
-		if(opt.avg == 0){
-			avg_genomeSize = cdbg.size(); //overestimate?
 			if(opt.verbose){
-				cout << "Estimate for avg. genome size: " << avg_genomeSize << endl;
+				cout << "---Query graph for input sequences---" << endl;
 			}
-		} else {
-			avg_genomeSize = opt.avg * 1000000;
-			if(opt.verbose){
-				cout << "Input for avg. genome size: " << avg_genomeSize << endl;
-			}
-		}
-
-		const size_t numberStrains = cdbg.getNbColors();
-		double db_size = numberStrains*avg_genomeSize;
-		int k = cdbg.getK(); //overwrite parameter given by user
-		size_t num_threads = opt.nb_threads - 1; //!!! one thread is used by main!!!
-		queue<pair<string,vector<searchResult>>> q;
 
 
-		//two possibilities: if number of query files given > number of threads, run each query file in a different thread
-		//otherwise: distribute threads to query files, split given query file over assigned threads evenly
-		if(opt.queryfiles.size() > 1 && num_threads > 0){
-			int i = 0;
-			while (i < opt.queryfiles.size()-1){
-				std::vector<thread> threadList;
-				int thread_counter = 0;
-				while (thread_counter <= num_threads){
-					if (i < opt.queryfiles.size()){
-						threadList.push_back(std::thread(run_subsample_completeQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), opt.queryfiles[i], std::ref(que), std::ref(opt.outprefix), opt.verbose));
-						thread_counter++;
-						i++;
-					} else {
-						break;
+			int k = cdbg.getK(); //overwrite parameter given by user
+			size_t num_threads = opt.nb_threads - 1; //!!! one thread is used by main!!!
+			queue<pair<string,vector<searchResult>>> q;
+
+
+			//two possibilities: if number of query files given > number of threads, run each query file in a different thread
+			//otherwise: distribute threads to query files, split given query file over assigned threads evenly
+			if(opt.queryfiles.size() > 1 && num_threads > 0){
+				int i = 0;
+				while (i < opt.queryfiles.size()-1){
+
+					std::vector<thread> threadList;
+					int thread_counter = 0;
+					while (thread_counter <= num_threads){
+						if (i < opt.queryfiles.size()){
+							threadList.push_back(std::thread(run_subsample_completeQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), opt.queryfiles[i], std::ref(que), std::ref(opt.outprefix), opt.verbose));
+							thread_counter++;
+							i++;
+						} else {
+							break;
+						}
+					}
+
+					writeResults_multipleFiles(opt.outprefix,q,cdbg); //write the results!
+
+					for (auto& thread : threadList) { //Join the threads with the main thread
+						thread.join();
 					}
 				}
+			} else { //split files and stuff!
+				if (num_threads > 0){
+					//parse fasta file
+					string queryfile = opt.queryfiles[0];
+					std::string delim = "/";
+					auto start = 0U;
+					auto end = queryfile.find(delim);
+					while (end != std::string::npos){
+						start = end + delim.length();
+						end = queryfile.find(delim, start);
+					}
+					string query = queryfile.substr(start, end);
 
-				writeResults_multipleFiles(opt.outprefix,q,cdbg); //write the results!
-
-				for (auto& thread : threadList) { //Join the threads with the main thread
-					thread.join();
-				}
-			}
-		} else { //split files and stuff!
-			if (num_threads > 0){
-				//parse fasta file
-				string queryfile = opt.queryfiles[0];
-				std::string delim = "/";
-				auto start = 0U;
-				auto end = queryfile.find(delim);
-				while (end != std::string::npos){
-					start = end + delim.length();
-					end = queryfile.find(delim, start);
-				}
-				string query = queryfile.substr(start, end);
-
-				//delete potentially existing search file for this query
-				string f = opt.outprefix+"_"+query+".search";
-				if (std::remove(f.c_str()) != 0) {
-					perror( "Error deleting file" );
-				} else {
-					cout << "File " << f << " removed" << endl;
-				}
-
-				vector<pair<string,string>> fasta = parseFasta(queryfile, opt.k, opt.verbose);
-				size_t bucketSize = fasta.size() / (num_threads);
-				size_t leftOvers = fasta.size() % (num_threads);
-
-				int thread_counter = 0;
-				std::vector<thread> threadList;
-
-				for(int i = 0; i <= fasta.size(); i=i+bucketSize) {
-					if (thread_counter+1 < num_threads){
-						threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(que), i, (i+bucketSize-1),query, opt.verbose));
-						thread_counter++;
+					//delete potentially existing search file for this query
+					string f = opt.outprefix+"_"+query+".search";
+					if (std::remove(f.c_str()) != 0) {
+						perror( "Error deleting file" );
 					} else {
-						threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(que),i,0,query, opt.verbose));
-						break;
+						cout << "File " << f << " removed" << endl;
+					}
+
+					vector<pair<string,string>> fasta = parseFasta(queryfile, opt.k, opt.verbose);
+					size_t bucketSize = 0;
+					if (fasta.size() < num_threads ){
+						bucketSize = fasta.size();
+					} else {
+						bucketSize = fasta.size() / (num_threads);
+						size_t leftOvers = fasta.size() % (num_threads);
+					}
+
+					int thread_counter = 0;
+					std::vector<thread> threadList;
+
+					for(int i = 0; i < fasta.size(); i=i+bucketSize) {
+
+						if (thread_counter+1 < num_threads){
+							threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(que), i, (i+bucketSize),query, opt.verbose));
+							thread_counter++;
+						} else {
+							threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(que),i,0,query, opt.verbose));
+							break;
+						}
+					}
+
+					//write the results!
+					if(opt.verbose){
+						cout << "Start writing..." << endl;
+					}
+					writeResults_singleFile(opt.outprefix,query,q,cdbg);
+
+					//Join the threads with the main thread
+					for (auto& thread : threadList) {
+						thread.join();
 					}
 				}
+				else { //we have only one thread to run, but could have multiple query files
+					for(auto& queryfile : opt.queryfiles){
+						run_subsample_completeQuery(q, db_size, k, opt.d, queryfile, que, opt.outprefix, opt.verbose);
+						writeResults_multipleFiles(opt.outprefix,q,cdbg);
 
-				//write the results!
-				if(opt.verbose){
-					cout << "Start writing..." << endl;
-				}
-				writeResults_singleFile(opt.outprefix,query,q,cdbg);
-
-				//Join the threads with the main thread
-				for (auto& thread : threadList) {
-					thread.join();
+					}
 				}
 			}
-			else { //we have only one thread to run, but could have multiple query files
-				for(auto& queryfile : opt.queryfiles){
-					run_subsample_completeQuery(q, db_size, k, opt.d, queryfile, que, opt.outprefix, opt.verbose);
-					writeResults_multipleFiles(opt.outprefix,q,cdbg);
 
-				}
-			}
-		}
-
-	//cout << "Search took " << (float( clock () - begin_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
+			cout << "Search took " << (float( clock () - begin_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
 		}
 		cout << "Goodbye!" << endl;
 	}

@@ -12,6 +12,7 @@
 
 #include <bifrost/ColoredCDBG.hpp>
 #include "UnitigData.hpp"
+#include "QuerySearch.hpp"
 
 
 
@@ -23,20 +24,21 @@ private:
 
 	//reference to the graph that is going to be traversed
 	ColoredCDBG<UnitigData>& cdbg;
+	double& db_size;
+	QuerySearch& que;
 
 
 public:
 
-	SubGraphTraverser(ColoredCDBG<UnitigData>& cdbg);
+	SubGraphTraverser(ColoredCDBG<UnitigData>& cdbg, double& db_size, QuerySearch& q);
 
-
-	void extractSubGraph(const string& query, const int k, const int distance, string& outprefix, string& queryfile);
+	unordered_map<size_t,vector<std::string>> extractSubGraph(const string& query, const int k, const int distance, string& outprefix, string& queryfile);
 
 	void pathLength(const unordered_map<size_t,vector<Kmer>>& all_paths, const int& ref_length);
 
-	unordered_map<size_t,std::string> pathSequence(const unordered_map<size_t,vector<Kmer>>& all_paths);
+	unordered_map<size_t,vector<std::string>> pathSequence(const unordered_map<size_t,vector<Kmer>>& all_paths);
 
-	void printPaths(string& outprefix, string& query, unordered_map<size_t,std::string>& paths);
+	void printPaths(string& outprefix, string& query, unordered_map<size_t,vector<std::string>>& paths, const string& queryID);
 
 	void testPath(const unordered_map<size_t,vector<Kmer>>& all_paths);
 

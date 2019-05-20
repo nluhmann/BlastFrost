@@ -223,10 +223,137 @@ int QuerySearch::compute_score(const vector<int>& hit) const {
 
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////
+// FUNC 2: Search Bifrost graph for queries, evaluate p-value and report hit Kmers subsequently (first step of subgraph extraction)
+/////////////////////////////////////////////////////////////////////////////////////////////
 
-///*
-// * ToDo: what does this function do?
-// */
+unordered_map<size_t,vector<Kmer>> QuerySearch::search_kmers(const string& query, const int k, const int ndistance, const double& db_size) const {
+
+	const size_t num_kmers = query.length() - k + 1;
+	const char *query_str = query.c_str(); //split query into sequence of kmers (!!! query can contain a kmer multiple times, do not change the order of the kmers at this point!)
+	unordered_map<size_t,vector<int>> arr; //keep this locally to evaluate p-value, return following map if accepted
+	unordered_map<size_t,vector<Kmer>> mapping;
+
+	int kmer_count = 0;
+	bool first = true;
+	bool wasEmpty = false;
+	const UnitigColors* old_uc;
+
+
+	for(KmerIterator it_km(query_str), it_km_end; it_km != it_km_end; ++it_km){ //search each kmer in cdbg and return color set
+
+		UnitigColorMap<UnitigData> map = cdbg.find(it_km->first);
+
+		map.dist = 0;
+		map.len = map.size - Kmer::k + 1;
+		//map.strand = true;
+
+
+		if (!map.isEmpty) {
+			const DataAccessor<UnitigData>* da = map.getData();
+			const UnitigColors* uc = da->getUnitigColors(map);
+
+			//bool copy = (!first && !wasEmpty && (uc == old_uc));
+			bool copy = false;
+			old_uc = uc;
+
+			Kmer head = map.getMappedHead();
+			//Kmer head = map.getUnitigHead();
+
+			if (copy) { //if this UnitigColors object contains the same colors as the object of the previous kmer (which is likely), then we already know whats happening!
+				for(auto& color : arr){
+					if (arr[color.first][kmer_count - 1] == 1) {
+						arr[color.first][kmer_count] = 1;
+
+						if (mapping[color.first].size() == 0 || mapping[color.first].back().toString() != head.toString()){ //check if this unitig has been found already
+							mapping[color.first].push_back(head);
+						}
+					}
+				}
+			}
+			else {
+				first = false;
+
+
+
+				for (UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); it.nextColor()) {
+
+						const size_t color = it.getColorID();
+
+						const std::unordered_map<size_t, vector<int>>::const_iterator iter = arr.find(color);
+						if (iter == arr.end()){
+							arr.insert({color, vector<int>(num_kmers, 0)});
+
+							vector<Kmer> newset;
+							mapping.insert({color, newset});
+						}
+						arr[color][kmer_count] = 1;
+
+						if (mapping[color].size() == 0 || mapping[color].back().toString().compare(head.toString()) != 0 ){ //check if this unitig has been found already
+							mapping[color].push_back(head);
+						}
+
+
+				}
+			}
+
+			//now check the k-mers neighborhood too, but do not overwrite perfect matches!
+//			if (ndistance > 0){
+//				const vector<Kmer> neighborhood = QuerySearch::compute_neighborhood(it_km->first.toString(), ndistance);
+//				for (const auto& nkmer : neighborhood){
+//					const const_UnitigColorMap<UnitigData> nmap = cdbg.find(nkmer);
+//
+//					if (!nmap.isEmpty) {
+//						const DataAccessor<UnitigData>* nda = nmap.getData();
+//						const UnitigColors* nuc = nda->getUnitigColors(nmap);
+//
+//						for (UnitigColors::const_iterator nit = nuc->begin(nmap); nit != nuc->end(); ++nit) {
+//							const size_t ncolor = nit.getColorID();
+//
+//							if (nuc -> contains(nmap, ncolor)){
+//								std::unordered_map<size_t,vector<int>>::iterator niter = arr.find(ncolor);
+//
+//								if (niter == arr.end()){
+//									arr.insert({ncolor, vector<int>(num_kmers, 0)});
+//									arr[ncolor][kmer_count] = 2;
+//								}
+//								else if (arr[ncolor][kmer_count] == 0) arr[ncolor][kmer_count] = 2;
+//							}
+//						}
+//					}
+//				}
+//			}
+		}
+		wasEmpty = map.isEmpty;
+
+		++kmer_count;
+	}
+
+	//for each color in arr, compute p-value, remove color from mapping if neccessary
+	for (auto& color : arr){
+		const int score = compute_score(color.second);
+		const int len = color.second.size();
+		const long double log_evalue = compute_log_evalue(score,db_size,len);
+		const long double log_pvalue = compute_log_pvalue(log_evalue);
+		const long double pvalue2 = pow(10,log_pvalue);
+
+		if (pvalue2 > 0.05){
+			//remove color from mapping
+			mapping.erase(color.first);
+		}
+	}
+
+
+	return mapping;
+}
+
+
+
+
+
+
+
+
 //void QuerySearch::remove_singletonHits(unordered_map<size_t, vector<int>>& hits) const {
 //
 //	const int k = cdbg.getK();

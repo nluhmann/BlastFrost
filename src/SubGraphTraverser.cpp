@@ -10,66 +10,73 @@
 using namespace std;
 
 
-SubGraphTraverser::SubGraphTraverser(ColoredCDBG<UnitigData>& graph) : cdbg(graph) {
+SubGraphTraverser::SubGraphTraverser(ColoredCDBG<UnitigData>& graph, double& db, QuerySearch& q) : cdbg(graph), db_size(db), que(q){
 	cout << "GraphTraverser initialized!" << endl;
+	//QuerySearch que(graph);
+
 }
 
 
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// FUNC 2: Explore subgraph that contains queried sequence, i.e. all variants of a gene queried against the graph
+// FUNC 2: Explore subgraph that contains queried sequence, i.e. all variants of a gene queried against the graph //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SubGraphTraverser::extractSubGraph(const string& query, const int k, const int distance, string& outprefix, string& queryfile) {
+unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(const string& query, const int k, const int distance, string& outprefix, string& queryfile) {
 
 	//ToDo: this should be a vector of Kmer!
-	unordered_map<size_t,vector<Kmer>> map;
-
-	//1) search for all k-mer hits inside of neighborhood defined by distance, save references to all unitigs covered
-	//ToDo: we will only consider exact matches for now!
-	const char *query_str = query.c_str();
-	int startcounter = 0;
-
-	for(KmerIterator it_km(query_str), it_km_end; it_km != it_km_end; ++it_km){
-		startcounter += 1;
-		UnitigColorMap<UnitigData> ucm = cdbg.find(it_km->first);
+	unordered_map<size_t,vector<Kmer>> map = que.search_kmers(query, k, distance, db_size);
 
 
-		ucm.dist = 0;
-		ucm.len = ucm.size - Kmer::k + 1;
-		//ucm.strand = true;
-
-
-		if (!ucm.isEmpty) {
-
-			const DataAccessor<UnitigData>* da = ucm.getData();
-			const UnitigColors* uc = da->getUnitigColors(ucm);
-
-
-			for (UnitigColors::const_iterator it = uc->begin(ucm); it != uc->end(); it.nextColor()) {
-				const size_t color = it.getColorID();
-
-				//check if color already in map
-				//ToDo: do we need to do that?
-				const std::unordered_map<size_t, vector<Kmer>>::iterator iter = map.find(color);
-				//Kmer head = ucm.getUnitigHead();
-				Kmer head = ucm.getMappedHead();
-
-				if (iter == map.end()) {
-					//cout << color << endl;
-					//cout << startcounter << endl;
-
-					vector<Kmer> newset;
-					map.insert({color, newset});
-					map[color].push_back(head);
-
-				} else if (map[color].back() != head){ //check if this unitig has been found already
-					map[color].push_back(head);
-				}
-			}
-		}
-	}
+//	//1) search for all k-mer hits inside of neighborhood defined by distance, save references to all unitigs covered
+//	//ToDo: we will only consider exact matches for now!
+//	const char *query_str = query.c_str();
+//	unordered_map<size_t,vector<Kmer>> map;
+//
+//
+//	for(KmerIterator it_km(query_str), it_km_end; it_km != it_km_end; ++it_km){
+//		UnitigColorMap<UnitigData> ucm = cdbg.find(it_km->first);
+//
+//
+//		ucm.dist = 0;
+//		ucm.len = ucm.size - Kmer::k + 1;
+//		//ucm.strand = true;
+//
+//
+//		if (!ucm.isEmpty) {
+//
+//			const DataAccessor<UnitigData>* da = ucm.getData();
+//			const UnitigColors* uc = da->getUnitigColors(ucm);
+//
+//
+//			for (UnitigColors::const_iterator it = uc->begin(ucm); it != uc->end(); it.nextColor()) {
+//				const size_t color = it.getColorID();
+//
+//				//check if color already in map
+//				//ToDo: do we need to do that?
+//				const std::unordered_map<size_t, vector<Kmer>>::iterator iter = map.find(color);
+//				//Kmer head = ucm.getUnitigHead();
+//				Kmer head = ucm.getMappedHead();
+//
+//				if (iter == map.end()) {
+//					//cout << color << endl;
+//					//cout << startcounter << endl;
+//
+//					vector<Kmer> newset;
+//					map.insert({color, newset});
+//					map[color].push_back(head);
+//
+//				} else if (map[color].back() != head){ //check if this unitig has been found already
+//					map[color].push_back(head);
+//				}
+//			}
+//		}
+//	}
+//
+//
+//	cout << "OLD MAP SIZE: " << map.size() << endl;
+//	cout << "NEW MAP SIZE: " << map2.size() << endl;
 
 	//for each color, output last unitig
 //	for(const auto& color : map){
@@ -92,17 +99,16 @@ void SubGraphTraverser::extractSubGraph(const string& query, const int k, const 
 
 
 	unordered_map<size_t,vector<Kmer>> all_paths;
-	cout << "complete paths" << endl;
 	for(const auto& color : map){
+
 		//add this node to the collected path
 		vector<Kmer> path;
-
 		vector<Kmer> current = color.second;
+
 		std::reverse(current.begin(),current.end());
 
-		//cout << color.first << endl;
 		while (! current.empty()){
-			//cout << current.size() << endl;
+
 			Kmer first = current.back();
 			current.pop_back();
 
@@ -112,7 +118,6 @@ void SubGraphTraverser::extractSubGraph(const string& query, const int k, const 
 			vector<Kmer> sameCol;
 
 			UnitigColorMap<UnitigData> ucm = cdbg.find(first);
-
 
 			for (const auto& successor : ucm.getSuccessors()){
 
@@ -135,20 +140,19 @@ void SubGraphTraverser::extractSubGraph(const string& query, const int k, const 
 				//Note: the while expression will still try to extend other seed unitigs for this color!
 
 
-
-
 			} else if (sameCol.size() == 1){
-				if ((!current.empty()) && sameCol.back() == current.back()){
-					//the single successor is already in the seed list
-					//cout << "seed already in list" << endl;
-				} else if ((!current.empty()) && ( std::find(path.begin(), path.end(), sameCol.back()) == path.end())){
 
+				if ((!current.empty()) && sameCol.back().toString() == current.back().toString()){
+					//the single successor is already in the seed list
+				} else if ((!current.empty()) && ( std::find(path.begin(), path.end(), sameCol.back()) == path.end())){
 					//the successor is not in the list, can fill a gap between seed unitigs
 					current.push_back(sameCol.back());
 
 				}
 			} else {
-				cout << "more than 2!" << endl;
+				//We have a repeat, I repeat, we have a repeat!
+				//cout << "more than 2!" << endl;
+				//cout << sameCol.size() << endl;
 			}
 		}
 		//std::reverse(path.begin(),path.end());
@@ -163,14 +167,14 @@ void SubGraphTraverser::extractSubGraph(const string& query, const int k, const 
 
 	//SubGraphTraverser::pathLength(all_paths, query.size());
 
-	unordered_map<size_t,std::string> paths = SubGraphTraverser::pathSequence(all_paths);
-	SubGraphTraverser::printPaths(outprefix, queryfile, paths);
+	unordered_map<size_t,vector<std::string>> paths = SubGraphTraverser::pathSequence(all_paths);
+	//SubGraphTraverser::printPaths(outprefix, queryfile, paths);
 
-	SubGraphTraverser::testPath(all_paths);
-
-
+	//SubGraphTraverser::testPath(all_paths);
 
 
+
+	return paths;
 
 
 
@@ -216,11 +220,14 @@ void SubGraphTraverser::pathLength(const unordered_map<size_t,vector<Kmer>>& all
 
 
 
-unordered_map<size_t,std::string> SubGraphTraverser::pathSequence(const unordered_map<size_t,vector<Kmer>>& all_paths) {
-	unordered_map<size_t,std::string> all_paths_sequences;
+unordered_map<size_t,vector<std::string>> SubGraphTraverser::pathSequence(const unordered_map<size_t,vector<Kmer>>& all_paths) {
+	unordered_map<size_t,vector<std::string>> all_paths_sequences;
 	for (const auto& color : all_paths) {
 		vector<Kmer> current = color.second;
 		std::string result;
+
+		string previous_suffix;
+		string previous_seq;
 
 		bool first = true;
 		for(auto& head : current){
@@ -228,15 +235,36 @@ unordered_map<size_t,std::string> SubGraphTraverser::pathSequence(const unordere
 			ucm.dist = 0;
 			ucm.len = ucm.size - Kmer::k + 1;
 
-			if (first){
-				result += ucm.mappedSequenceToString();
-				first = false;
+			string next = ucm.mappedSequenceToString();
+			//string next = ucm.referenceUnitigToString();
+			string next_prefix = next.substr(0,30);
+
+			if (! previous_suffix.empty()){
+				if (previous_suffix.compare(next_prefix) != 0){
+					//cout << "ERROR path not continuous, suffix: " << previous_suffix << endl;
+					//cout << "ERROR path not continuous, prefix: " << next_prefix << endl;
+
+					//push results with current number to file
+					all_paths_sequences[color.first].push_back(result);
+					result.clear();
+					result += next;
+
+				} else {
+					string suff = next.substr(30);
+					result += suff;
+				}
 			} else {
-				string suff = ucm.mappedSequenceToString().substr(30);
-				result += suff;
+				result += next;
 			}
+
+			previous_seq = next;
+			previous_suffix = next.substr(next.size() - 30);
+
 		}
-		all_paths_sequences[color.first] = result;
+		all_paths_sequences[color.first].push_back(result);
+		//cout << all_paths_sequences.size() << endl;
+
+
 	}
 	return all_paths_sequences;
 }
@@ -275,21 +303,30 @@ void SubGraphTraverser::testPath(const unordered_map<size_t,vector<Kmer>>& all_p
 }
 
 
-
-
-void SubGraphTraverser::printPaths(string& outprefix, string& query, unordered_map<size_t,std::string>& paths) {
+void SubGraphTraverser::printPaths(string& outprefix, string& query, unordered_map<size_t,vector<std::string>>& paths, const string& queryID) {
 //output paths in fasta format, encode color name and paths length in header
 
-	std::ofstream output(outprefix+"_"+query+"_subgraph.fasta",std::ios_base::out);
+	std::ofstream output(outprefix+"_"+query+"_subgraph.fasta",ios::out);
 
 	for (const auto& color : paths){
 		string color_name = cdbg.getColorName(color.first);
-		output << ">" << color_name << "_len_" << color.second.length() << endl;
-		output << color.second << endl;
+		vector<std::string> p = color.second;
+		if (p.size() == 1) {
+			output << ">" << queryID << "|" << color_name << "_len_" << color.second[0].length() << endl;
+			output << color.second[0] << endl;
+		} else {
+			int i = 0;
+			for(std::vector<int>::size_type i = 0; i != p.size(); i++) {
+				output << ">" << queryID << "|" << color_name << "_" << i << "_len_" << p[i].length() << endl;
+				output << p[i] << endl;
+			}
+		}
 	}
 
 	output.close();
 }
+
+
 
 
 

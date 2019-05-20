@@ -43,6 +43,7 @@ public:
 
 	void searchNextRow(const string& v, const string& word, const vector<int>& lastRow, vector<Kmer>& neighborhood, const char* alphabet, const size_t alphabet_sz, const int d) const;
 
+	unordered_map<size_t,vector<Kmer>> search_kmers(const string& query, const int k, const int ndistance, const double& db_size) const;
 
 
 	inline long double compute_p(const long double k, const long double x, const long double sigma) const {
