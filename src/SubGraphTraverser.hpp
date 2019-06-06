@@ -36,7 +36,7 @@ public:
 
 	void pathLength(const unordered_map<size_t,vector<Kmer>>& all_paths, const int& ref_length);
 
-	unordered_map<size_t,vector<std::string>> pathSequence(const unordered_map<size_t,vector<Kmer>>& all_paths);
+	vector<string> pathSequence(const vector<Kmer>& paths, const int& diff_prefix, const int& diff_suffix);
 
 	void printPaths(string& outprefix, string& query, unordered_map<size_t,vector<std::string>>& paths, const string& queryID);
 

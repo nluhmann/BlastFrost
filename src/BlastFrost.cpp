@@ -652,6 +652,14 @@ int main(int argc, char **argv) {
 				}
 				string query = queryfile.substr(start, end);
 
+				//delete potentially existing search file for this query
+				string f = opt.outprefix+"_"+query+"_subgraph.fasta";
+				if (std::remove(f.c_str()) != 0) {
+					perror( "Error deleting file" );
+				} else {
+					cout << "File " << f << " removed" << endl;
+				}
+
 				for(auto& seq: fasta) {
 					unordered_map<size_t,vector<std::string>> paths = tra.extractSubGraph(seq.second, opt.k, opt.d, opt.outprefix, query);
 					tra.printPaths(opt.outprefix, query, paths, seq.first);

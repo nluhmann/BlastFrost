@@ -28,6 +28,17 @@ private:
 
 public:
 
+	struct searchResultSubgraph {
+		unordered_map<size_t,vector<Kmer>> mapping;
+		int prefix_offset;
+		int suffix_offset;
+		int prefix_missing;
+		int suffix_missing;
+
+		searchResultSubgraph() : prefix_offset(0), suffix_offset(0), prefix_missing(0), suffix_missing(0) {};
+	};
+
+
 	QuerySearch(ColoredCDBG<UnitigData>& cdbg);
 
 
@@ -43,7 +54,7 @@ public:
 
 	void searchNextRow(const string& v, const string& word, const vector<int>& lastRow, vector<Kmer>& neighborhood, const char* alphabet, const size_t alphabet_sz, const int d) const;
 
-	unordered_map<size_t,vector<Kmer>> search_kmers(const string& query, const int k, const int ndistance, const double& db_size) const;
+	searchResultSubgraph search_kmers(const string& query, const int k, const int ndistance, const double& db_size) const;
 
 
 	inline long double compute_p(const long double k, const long double x, const long double sigma) const {
