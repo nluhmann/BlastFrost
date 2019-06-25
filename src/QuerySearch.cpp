@@ -242,7 +242,8 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 	searchResultSubgraph result;
 
 	int kmer_count = 0;
-	bool first = true;
+	//bool first = true;
+	unordered_map<size_t,bool> first;
 	bool wasEmpty = false;
 	const UnitigColors* old_uc;
 
@@ -262,15 +263,12 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 
 
 		if (!map.isEmpty) {
-			if (first) {
-				first = false;
-				result.prefix_offset = map.dist;
-			}
 
-			result.suffix_offset = map.dist;
+			int dist = map.dist;
 
 			map.dist = 0;
 			map.len = map.size - Kmer::k + 1;
+
 
 			const DataAccessor<UnitigData>* da = map.getData();
 			const UnitigColors* uc = da->getUnitigColors(map);
@@ -279,6 +277,7 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 			bool copy = false;
 			old_uc = uc;
 
+			//ToDo: CHECK HERE!!!
 			Kmer head = map.getMappedHead();
 			//Kmer head = map.getUnitigHead();
 
@@ -299,6 +298,23 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 				for (UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); it.nextColor()) {
 
 						const size_t color = it.getColorID();
+
+						if (first.find(color) == first.end()){
+							first[color] = false;
+							if (map.strand == 0){
+								result.prefix_offset[color] = map.size - Kmer::k + 1 - dist;
+							} else {
+								result.prefix_offset[color] = dist;
+							}
+						}
+
+						if (map.strand == 1){
+							result.suffix_offset[color] = map.size - Kmer::k + 1 - dist;
+						} else {
+							result.suffix_offset[color] = dist;
+						}
+
+
 
 						const std::unordered_map<size_t, vector<int>>::const_iterator iter = arr.find(color);
 						if (iter == arr.end()){
@@ -382,16 +398,16 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 				if (elem == 1){
 					break;
 				}
-				result.prefix_missing++;
+				result.prefix_missing[color.first]++;
 			}
 
-			int cnt_suffix = 0;
+			//int cnt_suffix = 0;
 			std::reverse(color.second.begin(),color.second.end());
 			for(auto& elem : color.second){
 				if (elem == 1){
 					break;
 				}
-				result.suffix_missing++;
+				result.suffix_missing[color.first]++;
 			}
 
 		}

@@ -29,11 +29,6 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 	QuerySearch::searchResultSubgraph res = que.search_kmers(query, k, distance, db_size);
 	unordered_map<size_t,vector<Kmer>> map = res.mapping;
 
-	cout << res.prefix_missing << endl;
-	cout << res.suffix_missing << endl;
-	cout << res.prefix_offset << endl;
-	cout << res.suffix_offset << endl;
-
 	//if prefix_missing > prefix_offset: we need to extend our search at the prefix
 	//if prefix_missing < prefix_offset: we need to cut the first unitig by (prefix_offset - prefix_missing) positions
 	//if suffix_missing > suffix_offset: we need to extend our search at the suffix
@@ -112,7 +107,6 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 	unordered_map<size_t,vector<std::string>> all_sequences;
 
 	for(const auto& color : map){
-
 		//add this node to the collected path
 		vector<Kmer> path;
 		vector<Kmer> current = color.second;
@@ -122,69 +116,96 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 		while (! current.empty()){
 
 			Kmer first = current.back();
+			cout << first.toString() << endl;
 			current.pop_back();
 
 			path.push_back(first);
 
-			//find all successors with the same color
-			vector<Kmer> sameCol;
+			if (! current.empty()){
+				//find all successors with the same color
+				vector<Kmer> sameCol;
 
-			UnitigColorMap<UnitigData> ucm = cdbg.find(first);
+				UnitigColorMap<UnitigData> ucm = cdbg.find(first);
 
-			for (const auto& successor : ucm.getSuccessors()){
+				for (const auto& successor : ucm.getSuccessors()){
 
-				const DataAccessor<UnitigData>* da = successor.getData();
-				const UnitigColors* uc = da->getUnitigColors(successor);
-				//Kmer head = successor.getUnitigHead();
-				Kmer head = successor.getMappedHead();
+					const DataAccessor<UnitigData>* da = successor.getData();
+					const UnitigColors* uc = da->getUnitigColors(successor);
+					//Kmer head = successor.getUnitigHead();
+					Kmer head = successor.getMappedHead();
 
-				for (UnitigColors::const_iterator it = uc->begin(successor); it != uc->end(); it.nextColor()) {
-					if (it.getColorID() == color.first){
-						sameCol.push_back(head);
+					if (! (head == first)){
+
+						for (UnitigColors::const_iterator it = uc->begin(successor); it != uc->end(); it.nextColor()) {
+							if (it.getColorID() == color.first){
+								sameCol.push_back(head);
+							}
+						}
 					}
 				}
-			}
 
-			if (sameCol.empty()){
-				//there is no successor of the same color, this path stops here
-				cout << "no successor!" << endl;
-
-				//Note: the while expression will still try to extend other seed unitigs for this color!
-
-
-			} else if (sameCol.size() == 1){
-
-//				if ((!current.empty()) && sameCol.back().toString() == current.back().toString()){
-//					//the single successor is already in the seed list
-//				} else if ((!current.empty()) && ( std::find(path.begin(), path.end(), sameCol.back()) == path.end())){
-//					//the successor is not in the list, can fill a gap between seed unitigs
-//					current.push_back(sameCol.back());
-//				}
-				if ((!current.empty()) && ( std::find(path.begin(), path.end(), sameCol.back()) == path.end())){
-									//the successor is not in the list, can fill a gap between seed unitigs
+				if (sameCol.size() == 1 && (sameCol.back().toString().compare(current.back().toString()) != 0)){
 					current.push_back(sameCol.back());
+					cout << "add" << endl;
 				}
-			} else {
-				//We have a repeat, I repeat, we have a repeat!
-				//cout << "more than 2!" << endl;
-				//cout << sameCol.size() << endl;
+
+				//			if (sameCol.empty()){
+				//				//there is no successor of the same color, this path stops here
+				//				cout << "no successor!" << endl;
+				//
+				//				//Note: the while expression will still try to extend other seed unitigs for this color!
+				//
+				//
+				//			} else if (sameCol.size() == 1){
+				//
+				////				if ((!current.empty()) && sameCol.back().toString() == current.back().toString()){
+				////					//the single successor is already in the seed list
+				////				} else if ((!current.empty()) && ( std::find(path.begin(), path.end(), sameCol.back()) == path.end())){
+				////					//the successor is not in the list, can fill a gap between seed unitigs
+				////					current.push_back(sameCol.back());
+				////				}
+				//				if ((!current.empty()) && ( std::find(path.begin(), path.end(), sameCol.back()) == path.end())){
+				//					cout << "push back" << endl;
+				//					//the successor is not in the list, can fill a gap between seed unitigs
+				//					current.push_back(sameCol.back());
+				////					cout << "Not yet in List" << endl;
+				////					cout << sameCol.back().toString() << endl;
+				////					cout << path.back().toString() << endl;
+				//				} else {
+				//					cout << "ALREADY IN LIST" << endl;
+				//				}
+				//			} else {
+				//				cout << "Repeat" << endl;
+				//				//We have a repeat, I repeat, we have a repeat!
+				//				//cout << "more than 2!" << endl;
+				//				//cout << sameCol.size() << endl;
+				//			}
 			}
 		}
 
+//		cout << res.prefix_missing[color.first] << endl;
+//		cout << res.prefix_offset[color.first] << endl;
+//		cout << res.suffix_missing[color.first] << endl;
+//		cout << res.suffix_offset[color.first] << endl;
+
 		int diff_prefix = 0;
-		if (res.prefix_missing > res.prefix_offset){
+		if (res.prefix_missing[color.first] > res.prefix_offset[color.first]){
 			//extend search
+			//ToDo how to extent to more untigs? orientation?
+			//cout << "EXTEND" << endl;
 		} else {
 			//cut prefix unitig respectively
-			diff_prefix = (res.prefix_missing - res.prefix_offset);
+			diff_prefix = (res.prefix_offset[color.first] - res.prefix_missing[color.first]);
 		}
 
 		int diff_suffix = 0;
-		if (res.suffix_missing > res.suffix_offset){
+		if (res.suffix_missing[color.first] > res.suffix_offset[color.first]){
 			//extend search
+			//ToDo how to extent to more untigs? orientation?
+			//cout << "EXTEND" << endl;
 		} else {
 			//cut suffix unitig respectively
-			diff_suffix = (res.suffix_missing - res.suffix_offset);
+			diff_suffix = (res.suffix_offset[color.first] - res.suffix_missing[color.first]);
 		}
 
 
@@ -192,6 +213,8 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 
 		all_sequences[color.first] = sequences;
 	}
+
+	cout << "all colors done" << endl;
 
 
 	//SubGraphTraverser::pathLength(all_paths, query.size());
@@ -206,11 +229,8 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 
 
 
-
-
 vector<std::string> SubGraphTraverser::pathSequence(const vector<Kmer>& path, const int& diff_prefix, const int& diff_suffix) {
 	vector<std::string> path_sequences;
-	//vector<Kmer> current = color.second;
 	string result;
 	string previous_suffix;
 	string previous_seq;
@@ -230,24 +250,46 @@ vector<std::string> SubGraphTraverser::pathSequence(const vector<Kmer>& path, co
 				//cout << "ERROR path not continuous, suffix: " << previous_suffix << endl;
 				//cout << "ERROR path not continuous, prefix: " << next_prefix << endl;
 
+//				cout << "BREAK" << endl;
+//				cout << next_prefix << endl;
+//				cout << previous_suffix << endl;
+//				cout << result << endl;
+//				cout << next << endl;
+
+
 				//push results with current number to file
 				path_sequences.push_back(result);
 				result.clear();
 				result += next;
 
+
 			} else {
+				//cout << "EXTEND" << endl;
 				string suff = next.substr(30);
 				result += suff;
 			}
 		} else {
-			result += next;
+			//ToDo think about these borders
+			if (first && diff_prefix > 0){
+				result += next.substr(diff_prefix-1);
+				first = false;
+			} else {
+				result += next;
+			}
 		}
-
 		previous_seq = next;
 		previous_suffix = next.substr(next.size() - 30);
 
 	}
-	path_sequences.push_back(result);
+
+	string result_end;
+	if (diff_suffix > 0){
+		result_end = result.substr(0,result.length()-diff_suffix-1);
+	} else {
+		result_end = result;
+	}
+
+	path_sequences.push_back(result_end);
 	//cout << all_paths_sequences.size() << endl;
 
 

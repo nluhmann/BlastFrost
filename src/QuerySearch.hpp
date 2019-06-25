@@ -30,12 +30,12 @@ public:
 
 	struct searchResultSubgraph {
 		unordered_map<size_t,vector<Kmer>> mapping;
-		int prefix_offset;
-		int suffix_offset;
-		int prefix_missing;
-		int suffix_missing;
+		unordered_map<size_t, int> prefix_offset;
+		unordered_map<size_t, int> suffix_offset;
+		unordered_map<size_t, int> prefix_missing;
+		unordered_map<size_t, int> suffix_missing;
 
-		searchResultSubgraph() : prefix_offset(0), suffix_offset(0), prefix_missing(0), suffix_missing(0) {};
+		//searchResultSubgraph() : prefix_offset(0), suffix_offset(0), prefix_missing(0), suffix_missing(0) {};
 	};
 
 
