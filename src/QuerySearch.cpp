@@ -192,6 +192,7 @@ int QuerySearch::compute_score(const vector<int>& hit) const {
 
 	int mismatch = 0;
 	int cnt = 0;
+	int cnt_hit = 0;
 
 	for (const auto elem : hit){
 
@@ -215,11 +216,13 @@ int QuerySearch::compute_score(const vector<int>& hit) const {
 	}
 
 	const int match = l - mismatch;
+
 	if (match <= 0) cout << "ERROR! No matches!" << endl;
 
 	return match*score_match+mismatch*score_mismatch;
 
 }
+
 
 
 
@@ -237,12 +240,11 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 	const size_t num_kmers = query.length() - k + 1;
 	const char *query_str = query.c_str(); //split query into sequence of kmers (!!! query can contain a kmer multiple times, do not change the order of the kmers at this point!)
 	unordered_map<size_t,vector<int>> arr; //keep this locally to evaluate p-value, return following map if accepted
-	//unordered_map<size_t,vector<Kmer>> mapping;
 
 	searchResultSubgraph result;
 
 	int kmer_count = 0;
-	//bool first = true;
+	//bool first_seq = true;
 	unordered_map<size_t,bool> first;
 	bool wasEmpty = false;
 	const UnitigColors* old_uc;
@@ -273,7 +275,7 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 			const DataAccessor<UnitigData>* da = map.getData();
 			const UnitigColors* uc = da->getUnitigColors(map);
 
-			//bool copy = (!first && !wasEmpty && (uc == old_uc));
+			//bool copy = (!first_seq && !wasEmpty && (uc == old_uc));
 			bool copy = false;
 			old_uc = uc;
 
@@ -293,7 +295,7 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 				}
 			}
 			else {
-				//first = false;
+				//first_seq = false;
 
 				for (UnitigColors::const_iterator it = uc->begin(map); it != uc->end(); it.nextColor()) {
 
@@ -323,33 +325,112 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 							vector<Kmer> newset;
 							result.mapping.insert({color, newset});
 						}
-						arr[color][kmer_count] = 1;
 
-						if (result.mapping[color].size() == 0 || result.mapping[color].back().toString().compare(head.toString()) != 0 ){ //check if this unitig has been found already
-							result.mapping[color].push_back(head);
+
+
+						//check if this 1 ends a stretch of 0's, in which case the stretch of 0's has to be at least of length k!
+						bool ok = true;
+						if (kmer_count > Kmer::k && arr[color][kmer_count-1] == 0){
+							for(int i=2; i<=Kmer::k; i++){
+								if (arr[color][kmer_count-i] != 0){
+									ok = false;
+									break;
+								}
+							}
 						}
 
+						arr[color][kmer_count] = 1;
 
+						if (ok){
+
+							if (result.mapping[color].size() == 0) {
+								result.mapping[color].push_back(head);
+								//arr[color][kmer_count] = 1;
+//							} else if (result.mapping[color].back().toString().compare(head.toString()) == 0) {
+//								arr[color][kmer_count] = 1;
+							} else if (arr[color][kmer_count-1] == 1){
+								Kmer previous = result.mapping[color].back();
+								UnitigColorMap<UnitigData> ucm = cdbg.find(previous);
+
+								for (const auto& successor : ucm.getSuccessors()){
+									const DataAccessor<UnitigData>* da = successor.getData();
+									const UnitigColors* uc = da->getUnitigColors(successor);
+
+									Kmer prev_head = successor.getMappedHead();
+									Kmer alternative = successor.getUnitigHead();
+
+									if (prev_head.toString().compare(head.toString()) == 0 || alternative.toString().compare(head.toString()) == 0){
+										result.mapping[color].push_back(head);
+										//arr[color][kmer_count] = 1;
+									}
+								}
+							}
+//							} else {
+//								//result.mapping[color].push_back(head);
+//								arr[color][kmer_count] = 1;
+//							}
+						} else {
+
+						}
 				}
 			}
 
 			//now check the k-mers neighborhood too, but do not overwrite perfect matches!
 			if (ndistance > 0){
 				const vector<Kmer> neighborhood = QuerySearch::compute_neighborhood(it_km->first.toString(), ndistance);
+				bool remove_only_once = true;
 				for (const auto& nkmer : neighborhood){
-					const const_UnitigColorMap<UnitigData> nmap = cdbg.find(nkmer);
+					UnitigColorMap<UnitigData> nmap = cdbg.find(nkmer);
+
+					int ndist = nmap.dist;
+
+					nmap.dist = 0;
+					nmap.len = nmap.size - Kmer::k + 1;
 
 					if (!nmap.isEmpty) {
 						const DataAccessor<UnitigData>* nda = nmap.getData();
 						const UnitigColors* nuc = nda->getUnitigColors(nmap);
 
-						//Kmer nhead = nmap.getMappedHead();
+						Kmer nhead = nmap.getMappedHead();
 
 						for (UnitigColors::const_iterator nit = nuc->begin(nmap); nit != nuc->end(); ++nit) {
 							const size_t ncolor = nit.getColorID();
 
 							if (nuc -> contains(nmap, ncolor)){
 								std::unordered_map<size_t,vector<int>>::iterator niter = arr.find(ncolor);
+
+//								if (niter == arr.end()){
+//									arr.insert({ncolor, vector<int>(num_kmers, 0)});
+//
+//									vector<Kmer> newset;
+//									result.mapping.insert({ncolor, newset});
+//								}
+//								if (arr[ncolor][kmer_count] == 0){
+//									//toDo: we need to check if the current unitig is actually a successor of the previous one, if the previous one had a direct hit...
+//									arr[ncolor][kmer_count] = 2;
+//
+//									if (result.mapping[ncolor].size() == 0 || result.mapping[ncolor].back().toString().compare(nhead.toString()) != 0 ){ //check if this unitig has been found already
+//										result.mapping[ncolor].push_back(nhead);
+//									}
+//
+//									if (first.find(ncolor) == first.end()){
+//										first[ncolor] = false;
+//										if (nmap.strand == 0){
+//											result.prefix_offset[ncolor] = nmap.size - Kmer::k + 1 - ndist;
+//										} else {
+//											result.prefix_offset[ncolor] = ndist;
+//										}
+//									}
+//
+//									if (nmap.strand == 1){
+//											result.suffix_offset[ncolor] = nmap.size - Kmer::k + 1 - ndist;
+//									} else {
+//											result.suffix_offset[ncolor] = ndist;
+//									}
+//								} else if (arr[ncolor][kmer_count] == 2){
+//									//todo: check if these kmers hit the same unitig?
+//									cout << "same neighborhood kmer hit" << endl;
+//								}
 
 								if (niter == arr.end()){
 									arr.insert({ncolor, vector<int>(num_kmers, 0)});
@@ -360,11 +441,63 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 								if (arr[ncolor][kmer_count] == 0){
 									arr[ncolor][kmer_count] = 2;
 
-									if (result.mapping[ncolor].size() == 0 || result.mapping[ncolor].back().toString().compare(nkmer.toString()) != 0 ){ //check if this unitig has been found already
-										result.mapping[ncolor].push_back(nkmer);
+									bool perfect_hit = true;
+									for (auto& elem : arr[ncolor]){
+										if (elem == 1){
+											perfect_hit = true;
+											break;
+										}
 									}
 
+									if (perfect_hit){
+
+										if (result.mapping[ncolor].size() == 0 || result.mapping[ncolor].back().toString().compare(nhead.toString()) != 0 ){ //check if this unitig has been found already
+
+											if (result.mapping[ncolor].size() != 0 && (arr[ncolor][kmer_count-1] == 1 || arr[ncolor][kmer_count-1] == 2)){
+												Kmer previous = result.mapping[ncolor].back();
+												UnitigColorMap<UnitigData> ucm = cdbg.find(previous);
+
+												for (const auto& successor : ucm.getSuccessors()){
+													const DataAccessor<UnitigData>* da = successor.getData();
+													const UnitigColors* uc = da->getUnitigColors(successor);
+
+													Kmer prev_head = successor.getMappedHead();
+													Kmer alternative = successor.getUnitigHead();
+
+													if (prev_head.toString().compare(nhead.toString()) == 0 || alternative.toString().compare(nhead.toString()) == 0){
+														result.mapping[ncolor].push_back(nhead);
+
+													}
+												}
+											} else if (result.mapping[ncolor].size() == 0) {
+												result.mapping[ncolor].push_back(nhead);
+											}
+										}
+
+										if (first.find(ncolor) == first.end()){
+											first[ncolor] = false;
+											if (nmap.strand == 0){
+												result.prefix_offset[ncolor] = nmap.size - Kmer::k + 1 - ndist;
+											} else {
+												result.prefix_offset[ncolor] = ndist;
+											}
+										}
+
+										if (nmap.strand == 1){
+											result.suffix_offset[ncolor] = nmap.size - Kmer::k + 1 - ndist;
+										} else {
+											result.suffix_offset[ncolor] = ndist;
+										}
+									}
+
+//								} else if (arr[ncolor][kmer_count] == 2){
+//									if (remove_only_once && result.mapping[ncolor].size() != 0){
+//										result.mapping[ncolor].pop_back();
+//										remove_only_once = false;
+//									}
+
 								}
+
 							}
 						}
 					}
@@ -379,18 +512,50 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 
 	//for each color in arr, compute p-value, remove color from mapping if neccessary
 	for (auto& color : arr){
+
 		const int score = compute_score(color.second);
 		const int len = color.second.size();
-		const long double log_evalue = compute_log_evalue(score,db_size,len);
-		const long double log_pvalue = compute_log_pvalue(log_evalue);
-		const long double pvalue2 = pow(10,log_pvalue);
 
 
-		if (pvalue2 > 0.05){
+
+		long double pvalue2 = 0;
+		if (score != len){
+			const long double log_evalue = compute_log_evalue(score,db_size,len);
+			const long double log_pvalue = compute_log_pvalue(log_evalue);
+			pvalue2 = pow(10,log_pvalue);
+		}
+
+
+		if (pvalue2 >= 0.05){
 			//remove color from mapping
 			result.mapping.erase(color.first);
 
+//			cout << cdbg.getColorName(color.first) << endl;
+//			cout << pvalue2 << endl;
+//			int cnt = 0;
+//			string res;
+//			string n;
+//			int lastElem = 3;
+//			for (auto& elem : color.second){
+//				if (elem == lastElem){
+//					cnt++;
+//				} else { //start a new run
+//					if (lastElem != 3){
+//						n = std::to_string(lastElem)+":"+std::to_string(cnt)+",";
+//						res+= n;
+//					}
+//					cnt = 1;
+//					lastElem = elem;
+//				}
+//			}
+//
+//
+//			n = std::to_string(lastElem)+":"+std::to_string(cnt)+",";
+//			res += n;
+//			cout << res << endl;
+
 		} else {
+
 			//TEST THIS
 			//record number of missed k-mers in beginning and end of query
 			//int cnt_prefix = 0;

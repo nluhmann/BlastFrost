@@ -107,19 +107,50 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 	unordered_map<size_t,vector<std::string>> all_sequences;
 
 	for(const auto& color : map){
+
+
 		//add this node to the collected path
 		vector<Kmer> path;
 		vector<Kmer> current = color.second;
 
+
+//		cout << cdbg.getColorName(color.first) << endl;
+//		cout << "CURR: " << current.size() << endl;
+//		bool debug = false;
+//		if (current.size() <= 2){
+//			debug = true;
+//		}
+//
+//		if (debug){
+//			for (auto& elem: current){
+//				cout << elem.toString() << endl;
+//			}
+//		}
+
 		std::reverse(current.begin(),current.end());
+		int add_count = 0;
 
 		while (! current.empty()){
 
+			if(add_count > 200){
+				path.clear();
+//				if (cdbg.getColorName(color.first) == "assemblies/SAL_LA1103AA_AS.scaffold.fasta"){
+//					cout << "clear path" << endl;
+//				}
+				cout << "clear path" << endl;
+				break;
+			}
+
+//			if (cdbg.getColorName(color.first) == "assemblies/SAL_LA1103AA_AS.scaffold.fasta"){
+//				cout << add_count << endl;
+//			}
+
 			Kmer first = current.back();
-			cout << first.toString() << endl;
 			current.pop_back();
 
 			path.push_back(first);
+
+
 
 			if (! current.empty()){
 				//find all successors with the same color
@@ -132,21 +163,40 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 					const DataAccessor<UnitigData>* da = successor.getData();
 					const UnitigColors* uc = da->getUnitigColors(successor);
 					//Kmer head = successor.getUnitigHead();
+
+
 					Kmer head = successor.getMappedHead();
+					//Kmer alternative = successor.getUnitigHead();
 
 					if (! (head == first)){
 
 						for (UnitigColors::const_iterator it = uc->begin(successor); it != uc->end(); it.nextColor()) {
 							if (it.getColorID() == color.first){
 								sameCol.push_back(head);
+								//sameCol.push_back(alternative);
+//								if (cdbg.getColorName(color.first) == "assemblies/SAL_EA7814AA_AS.scaffold.fasta"){
+//										cout << head.toString() << endl;
+//										cout << alternative.toString() << endl;
+//								}
 							}
 						}
 					}
 				}
 
-				if (sameCol.size() == 1 && (sameCol.back().toString().compare(current.back().toString()) != 0)){
-					current.push_back(sameCol.back());
-					cout << "add" << endl;
+				//if (sameCol.size() == 2 && sameCol[0].toString().compare(current.back().toString()) != 0 && sameCol[1].toString().compare(current.back().toString()) != 0){
+				if (sameCol.size() == 1 && sameCol[0].toString().compare(current.back().toString()) != 0){
+
+//					if (cdbg.getColorName(color.first) == "assemblies/SAL_LA1103AA_AS.scaffold.fasta"){
+//						cout << sameCol[0].toString() << endl;
+//						cout << current.back().toString() << endl;
+//					}
+
+					current.push_back(sameCol[0]);
+					++add_count;
+
+				} else {
+
+					add_count = 0;
 				}
 
 				//			if (sameCol.empty()){
@@ -208,13 +258,17 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 			diff_suffix = (res.suffix_offset[color.first] - res.suffix_missing[color.first]);
 		}
 
+		if (path.size() > 0){
+			vector<std::string> sequences = pathSequence(path, diff_prefix, diff_suffix);
 
-		vector<std::string> sequences = pathSequence(path, diff_prefix, diff_suffix);
+			all_sequences[color.first] = sequences;
 
-		all_sequences[color.first] = sequences;
+		} else {
+			//cout << cdbg.getColorName(color.first) << endl;
+		}
 	}
 
-	cout << "all colors done" << endl;
+//	cout << "all colors done" << endl;
 
 
 	//SubGraphTraverser::pathLength(all_paths, query.size());
@@ -269,7 +323,6 @@ vector<std::string> SubGraphTraverser::pathSequence(const vector<Kmer>& path, co
 				result += suff;
 			}
 		} else {
-			//ToDo think about these borders
 			if (first && diff_prefix > 0){
 				result += next.substr(diff_prefix-1);
 				first = false;

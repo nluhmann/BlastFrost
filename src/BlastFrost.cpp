@@ -394,10 +394,16 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 				const int score = que.compute_score(hit.second);
 				const int len = hit.second.size();
 
-				const long double log_evalue = que.compute_log_evalue(score,db_size,len);
-				const long double log_pvalue = que.compute_log_pvalue(log_evalue);
-				const long double evalue2 = pow(10,log_evalue);
-				const long double pvalue2 = pow(10,log_pvalue);
+				long double pvalue2 = 0;
+				long double evalue2 = 0;
+				if (score != len){
+					const long double log_evalue = que.compute_log_evalue(score,db_size,len);
+					const long double log_pvalue = que.compute_log_pvalue(log_evalue);
+					evalue2 = pow(10,log_evalue);
+					pvalue2 = pow(10,log_pvalue);
+				}
+
+
 
 				if (pvalue2 <= 0.05){ //create new searchResult and push to all results
 					searchResult result;
