@@ -339,38 +339,58 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 							}
 						}
 
-						arr[color][kmer_count] = 1;
+
 
 						if (ok){
+							arr[color][kmer_count] = 1;
 
 							if (result.mapping[color].size() == 0) {
 								result.mapping[color].push_back(head);
-								//arr[color][kmer_count] = 1;
-//							} else if (result.mapping[color].back().toString().compare(head.toString()) == 0) {
-//								arr[color][kmer_count] = 1;
-							} else if (arr[color][kmer_count-1] == 1){
-								Kmer previous = result.mapping[color].back();
-								UnitigColorMap<UnitigData> ucm = cdbg.find(previous);
-
-								for (const auto& successor : ucm.getSuccessors()){
-									const DataAccessor<UnitigData>* da = successor.getData();
-									const UnitigColors* uc = da->getUnitigColors(successor);
-
-									Kmer prev_head = successor.getMappedHead();
-									Kmer alternative = successor.getUnitigHead();
-
-									if (prev_head.toString().compare(head.toString()) == 0 || alternative.toString().compare(head.toString()) == 0){
-										result.mapping[color].push_back(head);
-										//arr[color][kmer_count] = 1;
-									}
-								}
+							} else if (result.mapping[color].back().toString().compare(head.toString()) != 0){
+								result.mapping[color].push_back(head);
 							}
+
+
+//							if (result.mapping[color].size() == 0) {
+//								result.mapping[color].push_back(head);
+//								//arr[color][kmer_count] = 1;
+////							} else if (result.mapping[color].back().toString().compare(head.toString()) == 0) {
+////								arr[color][kmer_count] = 1;
+//							} else if (arr[color][kmer_count-1] == 1){
+//
+//								if (result.mapping[color].back().toString() != head.toString()){
+//
+//									Kmer previous = result.mapping[color].back();
+//									UnitigColorMap<UnitigData> ucm = cdbg.find(previous);
+//
+//									for (const auto& successor : ucm.getSuccessors()){
+//										const DataAccessor<UnitigData>* da = successor.getData();
+//										const UnitigColors* uc = da->getUnitigColors(successor);
+//
+//										Kmer prev_head = successor.getMappedHead();
+//										Kmer alternative = successor.getUnitigHead();
+//
+//										if (prev_head.toString().compare(head.toString()) == 0 || alternative.toString().compare(head.toString()) == 0){
+//											result.mapping[color].push_back(head);
+//											if (cdbg.getColorName(color) == "assemblies/SAL_WA5226AA_AS.scaffold.fasta"){
+//												cout << "cont" << endl;
+//											}
+//										} else {
+//											if (cdbg.getColorName(color) == "assemblies/SAL_WA5226AA_AS.scaffold.fasta"){
+//												cout << "not continuous!" << endl;
+//											}
+//										}
+//									}
+//								} else{
+//									if (cdbg.getColorName(color) == "assemblies/SAL_WA5226AA_AS.scaffold.fasta"){
+//										cout << "same unitig!" << endl;
+//									}
+//								}
+//							}
 //							} else {
 //								//result.mapping[color].push_back(head);
 //								arr[color][kmer_count] = 1;
 //							}
-						} else {
-
 						}
 				}
 			}
@@ -516,7 +536,17 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 		const int score = compute_score(color.second);
 		const int len = color.second.size();
 
-
+//		if (cdbg.getColorName(color.first) == "assemblies/SAL_WA5226AA_AS.scaffold.fasta"){
+//			cout << score << endl;
+//			cout << len << endl;
+//			int counter = 0;
+//			for (auto& elem : color.second){
+//				if (elem == 1) ++counter;
+//			}
+//			cout << counter << endl;
+//			cout << "----" << endl;
+//			cout << result.mapping[color.first].size();
+//		}
 
 		long double pvalue2 = 0;
 		if (score != len){
@@ -529,30 +559,6 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 		if (pvalue2 >= 0.05){
 			//remove color from mapping
 			result.mapping.erase(color.first);
-
-//			cout << cdbg.getColorName(color.first) << endl;
-//			cout << pvalue2 << endl;
-//			int cnt = 0;
-//			string res;
-//			string n;
-//			int lastElem = 3;
-//			for (auto& elem : color.second){
-//				if (elem == lastElem){
-//					cnt++;
-//				} else { //start a new run
-//					if (lastElem != 3){
-//						n = std::to_string(lastElem)+":"+std::to_string(cnt)+",";
-//						res+= n;
-//					}
-//					cnt = 1;
-//					lastElem = elem;
-//				}
-//			}
-//
-//
-//			n = std::to_string(lastElem)+":"+std::to_string(cnt)+",";
-//			res += n;
-//			cout << res << endl;
 
 		} else {
 

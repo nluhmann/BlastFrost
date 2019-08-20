@@ -666,9 +666,16 @@ int main(int argc, char **argv) {
 					cout << "File " << f << " removed" << endl;
 				}
 
+				int c = 0;
 				for(auto& seq: fasta) {
-					unordered_map<size_t,vector<std::string>> paths = tra.extractSubGraph(seq.second, opt.k, opt.d, opt.outprefix, query);
-					tra.printPaths(opt.outprefix, query, paths, seq.first);
+					//unordered_map<size_t,vector<std::string>> paths = tra.extractSubGraph(seq.second, opt.k, opt.d, opt.outprefix, query);
+					//tra.printPaths(opt.outprefix, query, paths, seq.first);
+					if (opt.verbose){
+						cout << "Processing..." << c << endl;
+					}
+					++c;
+					SubGraphTraverser::subgraphs result = tra.extractSubGraph_intelligent(seq.second, opt.k, opt.d, opt.outprefix, query);
+					tra.printPaths_intelligent(opt.outprefix, query, result, seq.first);
 				}
 			}
 
