@@ -33,50 +33,17 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 	unordered_map<size_t,vector<Kmer>> map = res.mapping;
 
 
-	//unordered_map<size_t, vector<size_t>> groups = SubGraphTraverser::groupSeedHits(map);
-
-
-		//Strategy: for each color, starting from the first unitig in the list, find all successors of the same color
-		//if there is only one successor of the same color, add it to the path and pop it from the seed list if possible
-		//otherwise, follow each successor path until a unitig from the seed list is found. Ignore the other path(s).
-		//stop if the last unitig from the seed list is found
-
-		//ToDo: Afterwards, for each color, we might want to extent the path at the end or the beginning...but how far?
-		//We can first extend it following the longest color path? How can I anchor that?
-
-
 
 	unordered_map<size_t,vector<std::string>> all_sequences;
 
 	int counter = 0;
 	for(const auto& color : map){
 
-//		if ( counter % 10 == 0 ){
-//			cout << "Processed " << counter << " strains." << endl;
-//		}
-//		++counter;
 
-//		bool debug = false;
-//		if (cdbg.getColorName(color.first) == "assemblies/SAL_WA5226AA_AS.scaffold.fasta"){
-//			debug = false;
-//		}
 		//add this node to the collected path
 		vector<Kmer> path;
 		vector<Kmer> current = color.second;
 
-
-//		cout << cdbg.getColorName(color.first) << endl;
-//		cout << "CURR: " << current.size() << endl;
-//		bool debug = false;
-//		if (current.size() <= 2){
-//			debug = true;
-//		}
-//
-//		if (debug){
-//			for (auto& elem: current){
-//				cout << elem.toString() << endl;
-//			}
-//		}
 
 		std::reverse(current.begin(),current.end());
 		int add_count = 0;
@@ -84,9 +51,6 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 		while (! current.empty()){
 
 			if(add_count > 50){
-				//path.clear();
-				//cout << "clear path" << endl;
-				//break;
 
 				//remove the last Kmer in current, and remove the last 200 Kmers in the path, then try again
 				if (current.size() > 1){
@@ -101,11 +65,6 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 
 			}
 
-
-//			if (debug) {
-//				cout << current.size() << endl;
-//				cout << path.size() << endl;
-//			}
 
 			Kmer first = current.back();
 			current.pop_back();
@@ -153,14 +112,6 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 
 
 				} else {
-//					if (debug) {
-//						if (sameCol[0].toString().compare(current.back().toString()) == 0){
-//							cout << "the same" << endl;
-//						} else {
-//							cout << "something else" << endl;
-//						}
-//					}
-
 					add_count = 0;
 				}
 			}
@@ -169,8 +120,6 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 		int diff_prefix = 0;
 		if (res.prefix_missing[color.first] > res.prefix_offset[color.first]){
 			//extend search
-			//ToDo how to extent to more untigs? orientation?
-			//cout << "EXTEND" << endl;
 		} else {
 			//cut prefix unitig respectively
 			diff_prefix = (res.prefix_offset[color.first] - res.prefix_missing[color.first]);
@@ -179,8 +128,6 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 		int diff_suffix = 0;
 		if (res.suffix_missing[color.first] > res.suffix_offset[color.first]){
 			//extend search
-			//ToDo how to extent to more untigs? orientation?
-			//cout << "EXTEND" << endl;
 		} else {
 			//cut suffix unitig respectively
 			diff_suffix = (res.suffix_offset[color.first] - res.suffix_missing[color.first]);
@@ -191,8 +138,6 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 
 			all_sequences[color.first] = sequences;
 
-		} else {
-			//cout << cdbg.getColorName(color.first) << endl;
 		}
 	}
 
@@ -211,7 +156,6 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 
 SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(const string& query, const int k, const int distance, string& outprefix, string& queryfile) {
 
-	//ToDo: this should be a vector of Kmer!
 	QuerySearch::searchResultSubgraph res = que.search_kmers(query, k, distance, db_size);
 
 	//cout << "Extending..." << res.mapping.size() << endl;
@@ -223,18 +167,10 @@ SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(cons
 
 	unordered_map<size_t,vector<std::string>> all_sequences;
 
-	//int group_counter = 0;
-
 	for (auto& group: groups){
-
-		//cout << "Group: " << group_counter << endl;
-
-		//++group_counter;
 
 		vector<size_t> colors = group.second;
 		colors.push_back(group.first);
-
-		//cout << "Number of colors: " << colors.size() << endl;
 
 		while (! colors.empty()){
 			size_t current_color = colors.back();
@@ -260,7 +196,6 @@ SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(cons
 						add_count = 0;
 					} else {
 						path.clear();
-						//cout << "clear path" << endl;
 						break;
 					}
 
@@ -329,8 +264,6 @@ SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(cons
 			int diff_prefix = 0;
 			if (res.prefix_missing[current_color] > res.prefix_offset[current_color]){
 				//extend search
-				//ToDo how to extent to more untigs? orientation?
-				//cout << "EXTEND" << endl;
 			} else {
 				//cut prefix unitig respectively
 				diff_prefix = (res.prefix_offset[current_color] - res.prefix_missing[current_color]);
@@ -339,8 +272,6 @@ SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(cons
 			int diff_suffix = 0;
 			if (res.suffix_missing[current_color] > res.suffix_offset[current_color]){
 				//extend search
-				//ToDo how to extent to more untigs? orientation?
-				//cout << "EXTEND" << endl;
 			} else {
 				//cut suffix unitig respectively
 				diff_suffix = (res.suffix_offset[current_color] - res.suffix_missing[current_color]);
@@ -382,7 +313,6 @@ unordered_map<size_t, vector<size_t>> SubGraphTraverser::groupSeedHits(unordered
 		}
 	}
 
-	//cout << "Found..." << groups.size() << " groups" << endl;
 
 	return groups;
 }
@@ -410,15 +340,6 @@ vector<std::string> SubGraphTraverser::pathSequence(const vector<Kmer>& path, co
 
 		if (! previous_suffix.empty()){
 			if (previous_suffix.compare(next_prefix) != 0){
-				//cout << "ERROR path not continuous, suffix: " << previous_suffix << endl;
-				//cout << "ERROR path not continuous, prefix: " << next_prefix << endl;
-
-//				cout << "BREAK" << endl;
-//				cout << next_prefix << endl;
-//				cout << previous_suffix << endl;
-//				cout << result << endl;
-//				cout << next << endl;
-
 
 				//push results with current number to file
 				path_sequences.push_back(result);
@@ -427,7 +348,6 @@ vector<std::string> SubGraphTraverser::pathSequence(const vector<Kmer>& path, co
 
 
 			} else {
-				//cout << "EXTEND" << endl;
 				string suff = next.substr(30);
 				result += suff;
 			}
@@ -452,7 +372,6 @@ vector<std::string> SubGraphTraverser::pathSequence(const vector<Kmer>& path, co
 	}
 
 	path_sequences.push_back(result_end);
-	//cout << all_paths_sequences.size() << endl;
 
 
 	return path_sequences;

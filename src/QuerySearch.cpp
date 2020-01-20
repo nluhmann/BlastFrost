@@ -536,17 +536,6 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 		const int score = compute_score(color.second);
 		const int len = color.second.size();
 
-//		if (cdbg.getColorName(color.first) == "assemblies/SAL_WA5226AA_AS.scaffold.fasta"){
-//			cout << score << endl;
-//			cout << len << endl;
-//			int counter = 0;
-//			for (auto& elem : color.second){
-//				if (elem == 1) ++counter;
-//			}
-//			cout << counter << endl;
-//			cout << "----" << endl;
-//			cout << result.mapping[color.first].size();
-//		}
 
 		long double pvalue2 = 0;
 		if (score != len){
@@ -562,7 +551,6 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 
 		} else {
 
-			//TEST THIS
 			//record number of missed k-mers in beginning and end of query
 			//int cnt_prefix = 0;
 			for(auto& elem : color.second){
@@ -591,58 +579,6 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 }
 
 
-
-
-
-
-
-
-//void QuerySearch::remove_singletonHits(unordered_map<size_t, vector<int>>& hits) const {
-//
-//	const int k = cdbg.getK();
-//	vector<size_t> to_be_removed;
-//
-//	for (const auto& hit : hits){
-//
-//		const vector<int>& seq = hit.second;
-//		//if first and last appearance of '1' in vector is more than k appart, then everything is ok!
-//		int cnt_begin = 0;
-//		int cnt_end = 0;
-//
-//		for (vector<int>::const_iterator i = seq.begin(); i != seq.end(); ++i){
-//			if (*i == 1) break;
-//			++cnt_begin;
-//		}
-//
-//		for (vector<int>::const_reverse_iterator i = seq.rbegin(); i != seq.rend(); ++i){
-//			if (*i == 1) break;
-//			++cnt_end;
-//		}
-//
-//		if ((seq.size() - cnt_end - cnt_begin) <= k) to_be_removed.push_back(hit.first);
-//	}
-//	for (const auto elem : to_be_removed) hits.erase(elem);
-//}
-
-
-
-//void QuerySearch::writePresenceMatrix(const unordered_map<size_t,vector<int>>& arr, const string& outfile, const unordered_map<size_t,long double>& pvalues) const {
-//
-//	std::ofstream output(outfile, std::ofstream::binary);
-//
-//	for (const auto& elem : arr){
-//
-//		const string color = cdbg.getColorName(elem.first);
-//
-//		output << color << "\t" << pvalues.at(elem.first);
-//
-//		for (const auto& p : elem.second) output << "\t" << p;
-//
-//		output << endl;
-//	}
-//
-//	output.close();
-//}
 
 
 

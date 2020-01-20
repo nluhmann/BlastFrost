@@ -44,10 +44,6 @@ public:
 
 	unordered_map<size_t,vector<int>> search(const string& query, const int k, const int ndistance, const string& query_name) const;
 
-	//void writePresenceMatrix(const unordered_map<size_t,vector<int>>& arr, const string& outfile, const unordered_map<size_t,long double>& pvalues) const;
-
-	//void remove_singletonHits(unordered_map<size_t,vector<int>>& hits) const;
-
 	int compute_score(const vector<int>& hit) const;
 
 	vector<Kmer> compute_neighborhood(const string& kmer_str, const int d) const;

@@ -39,6 +39,8 @@ void PrintUsage() {
 			<< "  -o,         Prefix for search result files (default: 'output')"
 
 			<< endl << endl << "Optional parameters:"<< endl << endl
+			<< "  -e,             Enable subgraph extraction"
+			<< endl
 			<< "  -t,             Number of threads (default is 1)"
 			<< endl
 			<< "  -k,             Length of k-mers (default is 31, max. is 31)"
@@ -47,9 +49,11 @@ void PrintUsage() {
 			<< endl
 			<< "  -c,           Enhance gfa file with color information, option can be run without a query search."
 			<< endl
-			<< "  -v,             Print information messages during construction"
-			<< endl
 			<< "  -s,			Average size of genomes in Bifrost graph in Mb"
+			<< endl
+			<< "  -a,             Return file containing all colors currently present in Bifrost graph"
+			<< endl
+			<< "  -v,             Print information messages during construction"
 			<< endl << endl;
 }
 
@@ -263,7 +267,6 @@ int augmentGFA(SubGraphTraverser& tra, const string& gfaFile, const size_t& num_
 
 
 
-//ToDo: make better.
 const int estimate_avg_genomeSize(const vector<string>& files, bool verbose){
 	int cnt = 0;
 	int size = 0;
@@ -361,12 +364,6 @@ vector<pair<string,string>> parseFasta(const string& queryfile, const int& k, bo
 	if(verbose){
 		cout << "### Number of sequences that will not be queried due to length smaller than k: " << counter << endl;
 	}
-
-	//cout << fasta.size() << endl;
-
-
-
-
 	return fasta;
 }
 
@@ -635,7 +632,7 @@ int main(int argc, char **argv) {
 			}
 			augmentGFA(tra,opt.graphfile,cdbg.getNbColors(), opt.verbose);
 
-		//TESTING/ IN DEVELOPMENT
+		//subgraph extraction
 		} else if (opt.extractSubgraph){
 			QuerySearch que(cdbg);
 			SubGraphTraverser tra(cdbg, db_size, que);
@@ -668,8 +665,6 @@ int main(int argc, char **argv) {
 
 				int c = 0;
 				for(auto& seq: fasta) {
-					//unordered_map<size_t,vector<std::string>> paths = tra.extractSubGraph(seq.second, opt.k, opt.d, opt.outprefix, query);
-					//tra.printPaths(opt.outprefix, query, paths, seq.first);
 					if (opt.verbose){
 						cout << "Processing..." << c << endl;
 						++c;
