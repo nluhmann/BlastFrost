@@ -51,10 +51,10 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 	int counter = 0;
 	for(const auto& color : map){
 
-		if ( counter % 1000 == 0 ){
-			cout << "Processed " << counter << " strains." << endl;
-		}
-		++counter;
+//		if ( counter % 10 == 0 ){
+//			cout << "Processed " << counter << " strains." << endl;
+//		}
+//		++counter;
 
 //		bool debug = false;
 //		if (cdbg.getColorName(color.first) == "assemblies/SAL_WA5226AA_AS.scaffold.fasta"){
@@ -214,8 +214,7 @@ SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(cons
 	//ToDo: this should be a vector of Kmer!
 	QuerySearch::searchResultSubgraph res = que.search_kmers(query, k, distance, db_size);
 
-	cout << "Found seed kmers" << endl;
-	cout << "Extending..." << res.mapping.size() << endl;
+	//cout << "Extending..." << res.mapping.size() << endl;
 	unordered_map<size_t,vector<Kmer>> map = res.mapping;
 
 	subgraphs result;
@@ -224,11 +223,18 @@ SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(cons
 
 	unordered_map<size_t,vector<std::string>> all_sequences;
 
+	//int group_counter = 0;
 
 	for (auto& group: groups){
 
+		//cout << "Group: " << group_counter << endl;
+
+		//++group_counter;
+
 		vector<size_t> colors = group.second;
 		colors.push_back(group.first);
+
+		//cout << "Number of colors: " << colors.size() << endl;
 
 		while (! colors.empty()){
 			size_t current_color = colors.back();
@@ -254,7 +260,7 @@ SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(cons
 						add_count = 0;
 					} else {
 						path.clear();
-						cout << "clear path" << endl;
+						//cout << "clear path" << endl;
 						break;
 					}
 
@@ -269,12 +275,14 @@ SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(cons
 					UnitigColorMap<UnitigData> ucm = cdbg.find(first);
 
 					for (const auto& successor : ucm.getSuccessors()){
-						const DataAccessor<UnitigData>* da = successor.getData();
-						const UnitigColors* uc = da->getUnitigColors(successor);
-
 						Kmer head = successor.getMappedHead();
 
-						if (! (head == first)){
+						if (head == current.back()){
+							break;
+						} else if (! (head == first)){
+
+							const DataAccessor<UnitigData>* da = successor.getData();
+							const UnitigColors* uc = da->getUnitigColors(successor);
 							for (UnitigColors::const_iterator it = uc->begin(successor); it != uc->end(); it.nextColor()) {
 								if (it.getColorID() == current_color && sameCol.empty()){
 									sameCol.push_back(head);
@@ -289,25 +297,34 @@ SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(cons
 
 					if (sameCol.size() == 1 && sameCol[0].toString().compare(current.back().toString()) != 0){
 						current.push_back(sameCol[0]);
-						UnitigColorMap<UnitigData> ucm = cdbg.find(sameCol[0]);
-						const DataAccessor<UnitigData>* da = ucm.getData();
-						const UnitigColors* uc = da->getUnitigColors(ucm);
-						for (auto& col : color_group){
-							if (! uc->contains(ucm,col)) {
-								color_group.erase(std::remove(color_group.begin(), color_group.end(), col), color_group.end());
+						++add_count;
+
+						if (color_group.size() > 1){
+							UnitigColorMap<UnitigData> ucm = cdbg.find(sameCol[0]);
+							const DataAccessor<UnitigData>* da = ucm.getData();
+							const UnitigColors* uc = da->getUnitigColors(ucm);
+							for (auto& col : color_group){
+								if (! uc->contains(ucm,col)) {
+									color_group.erase(std::remove(color_group.begin(), color_group.end(), col), color_group.end());
+								}
 							}
 						}
 
-						++add_count;
 					} else {
 						add_count = 0;
 					}
 				}
 			}
-			//remove all colors that have been found with this path!
-			for (auto& col: color_group){
-				colors.erase(std::remove(colors.begin(), colors.end(), col), colors.end());
+
+			if (color_group.size() < colors.size()){
+				//remove all colors that have been found with this path!
+				for (auto& col: color_group){
+					colors.erase(std::remove(colors.begin(), colors.end(), col), colors.end());
+				}
+			} else {
+				colors.clear();
 			}
+
 
 			int diff_prefix = 0;
 			if (res.prefix_missing[current_color] > res.prefix_offset[current_color]){
@@ -335,6 +352,7 @@ SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(cons
 				result.colors[current_color] = color_group;
 				result.sequences[current_color] = sequences;
 			}
+
 		}
 	}
 
@@ -351,7 +369,6 @@ unordered_map<size_t, vector<size_t>> SubGraphTraverser::groupSeedHits(unordered
 	for (auto& new_elem : map){
 		bool found = false;
 		for(auto& seen_elem : already_seen){
-
 			if(seen_elem.second == new_elem.second){
 				groups[seen_elem.first].push_back(new_elem.first);
 				found = true;
@@ -359,15 +376,13 @@ unordered_map<size_t, vector<size_t>> SubGraphTraverser::groupSeedHits(unordered
 			}
 		}
 		if (! found){
-			//vector<Kmer> newset;
-			//already_seen.insert({new_elem.first(), newset});
 			already_seen[new_elem.first] = new_elem.second;
 			vector<size_t> newgroup;
 			groups[new_elem.first] = newgroup;
 		}
 	}
 
-	cout << "Found..." << groups.size() << " groups" << endl;
+	//cout << "Found..." << groups.size() << " groups" << endl;
 
 	return groups;
 }
