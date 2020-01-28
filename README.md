@@ -11,6 +11,10 @@ You can learn more about Bifrost graphs and how to build them [here](https://git
 
 
 ## Install
+First, you need to install Bifrost: https://github.com/pmelsted/bifrost
+
+Then you can install BlastFrost:
+
 ```
 mkdir build; cd build; cmake ..; make
 ```
