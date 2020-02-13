@@ -23,7 +23,7 @@ SubGraphTraverser::SubGraphTraverser(ColoredCDBG<UnitigData>& graph, double& db,
 // FUNC 2: Explore subgraph that contains queried sequence, i.e. all variants of a gene queried against the graph //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(const string& query, const int k, const int distance, string& outprefix, string& queryfile) {
+unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(const string& query, const int k, const int distance) {
 
 	//ToDo: this should be a vector of Kmer!
 	QuerySearch::searchResultSubgraph res = que.search_kmers(query, k, distance, db_size);
@@ -36,7 +36,7 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 
 	unordered_map<size_t,vector<std::string>> all_sequences;
 
-	int counter = 0;
+	//int counter = 0;
 	for(const auto& color : map){
 
 
@@ -154,7 +154,7 @@ unordered_map<size_t,vector<std::string>> SubGraphTraverser::extractSubGraph(con
 
 
 
-SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(const string& query, const int k, const int distance, string& outprefix, string& queryfile) {
+SubGraphTraverser::subgraphs SubGraphTraverser::extractSubGraph_intelligent(const string& query, const int k, const int distance) {
 
 	QuerySearch::searchResultSubgraph res = que.search_kmers(query, k, distance, db_size);
 
@@ -405,7 +405,7 @@ void SubGraphTraverser::testPath(const unordered_map<size_t,vector<Kmer>>& all_p
 
 			string next_prefix = next.substr(0,30);
 			if (! previous_suffix.empty()){
-				if (! previous_suffix.compare(next_prefix) == 0){
+				if (! (previous_suffix.compare(next_prefix) == 0)){
 					cout << "ERROR path not continuous, suffix: " << previous_suffix << endl;
 					cout << "ERROR path not continuous, prefix: " << next_prefix << endl;
 				}
@@ -429,7 +429,7 @@ void SubGraphTraverser::printPaths(string& outprefix, string& query, unordered_m
 			output << ">" << queryID << "|" << color_name << "_len_" << color.second[0].length() << endl;
 			output << color.second[0] << endl;
 		} else {
-			int i = 0;
+			//int i = 0;
 			for(std::vector<int>::size_type i = 0; i != p.size(); i++) {
 				output << ">" << queryID << "|" << color_name << "_" << i << "_len_" << p[i].length() << endl;
 				output << p[i] << endl;
@@ -452,7 +452,7 @@ void SubGraphTraverser::printPaths_intelligent(string& outprefix, string& query,
 			output << ">" << queryID << "|" << color_name << "_len_" << p[0].length() << endl;
 			output << p[0] << endl;
 		} else {
-			int i = 0;
+			//int i = 0;
 			for(std::vector<int>::size_type i = 0; i != p.size(); i++) {
 				output << ">" << queryID << "|" << color_name << "_" << i << "_len_" << p[i].length() << endl;
 				output << p[i] << endl;
@@ -466,7 +466,7 @@ void SubGraphTraverser::printPaths_intelligent(string& outprefix, string& query,
 				output << ">" << queryID << "|" << color_name << "_len_" << p[0].length() << endl;
 				output << p[0] << endl;
 			} else {
-				int i = 0;
+				//int i = 0;
 				for(std::vector<int>::size_type i = 0; i != p.size(); i++) {
 					output << ">" << queryID << "|" << color_name << "_" << i << "_len_" << p[i].length() << endl;
 					output << p[i] << endl;
@@ -480,7 +480,7 @@ void SubGraphTraverser::printPaths_intelligent(string& outprefix, string& query,
 }
 
 
-void SubGraphTraverser::pathLength(const unordered_map<size_t,vector<Kmer>>& all_paths, const int& ref_length) {
+void SubGraphTraverser::pathLength(const unordered_map<size_t,vector<Kmer>>& all_paths) {
 	//compute the length of each of the paths
 		for (const auto& color : all_paths){
 			vector<Kmer> current = color.second;

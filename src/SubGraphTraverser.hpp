@@ -41,13 +41,13 @@ public:
 
 	SubGraphTraverser(ColoredCDBG<UnitigData>& cdbg, double& db_size, QuerySearch& q);
 
-	unordered_map<size_t,vector<std::string>> extractSubGraph(const string& query, const int k, const int distance, string& outprefix, string& queryfile);
+	unordered_map<size_t,vector<std::string>> extractSubGraph(const string& query, const int k, const int distance);
 
 	unordered_map<size_t, vector<size_t>> groupSeedHits(unordered_map<size_t,vector<Kmer>>& map);
 
-	subgraphs extractSubGraph_intelligent(const string& query, const int k, const int distance, string& outprefix, string& queryfile);
+	subgraphs extractSubGraph_intelligent(const string& query, const int k, const int distance);
 
-	void pathLength(const unordered_map<size_t,vector<Kmer>>& all_paths, const int& ref_length);
+	void pathLength(const unordered_map<size_t,vector<Kmer>>& all_paths);
 
 	vector<string> pathSequence(const vector<Kmer>& paths, const int& diff_prefix, const int& diff_suffix);
 

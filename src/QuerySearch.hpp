@@ -42,7 +42,7 @@ public:
 	QuerySearch(ColoredCDBG<UnitigData>& cdbg);
 
 
-	unordered_map<size_t,vector<int>> search(const string& query, const int k, const int ndistance, const string& query_name) const;
+	unordered_map<size_t,vector<int>> search(const string& query, const int k, const int ndistance) const;
 
 	int compute_score(const vector<int>& hit) const;
 

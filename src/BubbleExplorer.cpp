@@ -82,7 +82,7 @@ void BubbleExplorer::exploreBubble(const string& left, const string& right, cons
 /*
  * Iterative Depth-first search.
  */
-vector<vector<UnitigColorMap<UnitigData>>> BubbleExplorer::DFS_Iterative(const UnitigColorMap<UnitigData>& start, const Kmer& stop, const int threshold){
+vector<vector<UnitigColorMap<UnitigData>>> BubbleExplorer::DFS_Iterative(const UnitigColorMap<UnitigData>& start, const Kmer& stop, const unsigned int threshold){
 	//record the path we are iterating over, and push it to the result if we reach the stop Kmer
 
 	stack<UnitigColorMap<UnitigData>> stck; // Create stack of unitig to traverse
@@ -133,8 +133,8 @@ vector<vector<UnitigColorMap<UnitigData>>> BubbleExplorer::DFS_Iterative(const U
 	    		//adjust current path such that only the predecessor of the next unitig on the stack is present
 	    		UnitigColorMap<UnitigData> ucm_next = stck.top();
 
-	    		DataAccessor<UnitigData>* nextda = ucm_next.getData(); // Get DataAccessor from unitig
-	    		UnitigData* nextdata = nextda->getData(ucm_next); // Get boolean from DataAccessor
+	    		//DataAccessor<UnitigData>* nextda = ucm_next.getData(); // Get DataAccessor from unitig
+	    		//UnitigData* nextdata = nextda->getData(ucm_next); // Get boolean from DataAccessor
 
 	    		bool broken = false;
 	    		for (auto& predecessor : ucm_next.getPredecessors()){
@@ -168,8 +168,8 @@ vector<vector<UnitigColorMap<UnitigData>>> BubbleExplorer::DFS_Iterative(const U
 	    			if (! stck.empty()){
 	    				UnitigColorMap<UnitigData> ucm_next = stck.top();
 
-	    				DataAccessor<UnitigData>* nextda = ucm_next.getData(); // Get DataAccessor from unitig
-	    				UnitigData* nextdata = nextda->getData(ucm_next); // Get boolean from DataAccessor
+	    				//DataAccessor<UnitigData>* nextda = ucm_next.getData(); // Get DataAccessor from unitig
+	    				//UnitigData* nextdata = nextda->getData(ucm_next); // Get boolean from DataAccessor
 
 	    				bool broken = false;
 	    				for (auto& predecessor : ucm_next.getPredecessors()){

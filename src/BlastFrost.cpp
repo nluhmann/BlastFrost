@@ -68,8 +68,8 @@ struct searchOptions {
 	int k;
 	int d;
 	bool enhanceGFA;
-	bool extractSubgraph;
 	double avg;
+	bool extractSubgraph;
 	string s1;
 	string s2;
 	bool returnColors;
@@ -193,7 +193,7 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 
 
 
-int augmentGFA(SubGraphTraverser& tra, const string& gfaFile, const size_t& num_colors, bool verbose){
+void augmentGFA(SubGraphTraverser& tra, const string& gfaFile, const size_t& num_colors, bool verbose){
 	// open gfa, read line by line, immadiately write to augmented file
 	std::ofstream output(gfaFile+"_colored.gfa",std::ofstream::binary);
 	if(verbose){
@@ -215,7 +215,7 @@ int augmentGFA(SubGraphTraverser& tra, const string& gfaFile, const size_t& num_
 			//assumption: each S line has the same fields: S \t ID \t SEQ \t DZ-Tag
 			vector<string> line_arr;
 			string delim = "\t";
-			size_t pos = 0;
+			//size_t pos = 0;
 
 			auto start = 0U;
 			auto end = line.find(delim);
@@ -267,7 +267,7 @@ int augmentGFA(SubGraphTraverser& tra, const string& gfaFile, const size_t& num_
 
 
 
-const int estimate_avg_genomeSize(const vector<string>& files, bool verbose){
+int estimate_avg_genomeSize(const vector<string>& files, bool verbose){
 	int cnt = 0;
 	int size = 0;
 
@@ -281,8 +281,9 @@ const int estimate_avg_genomeSize(const vector<string>& files, bool verbose){
 		cnt++;
 	}
 	if(verbose){
-		cout << "### Avg genome size: " << size << endl;
+		//cout << "### Avg genome size: " << size << endl;
 	}
+
 	return size;
 }
 
@@ -316,7 +317,7 @@ const string runLength_encode(const vector<int>& v){
 
 
 
-vector<pair<string,string>> parseFasta(const string& queryfile, const int& k, bool verbose){
+vector<pair<string,string>> parseFasta(const string& queryfile, const unsigned int& k, bool verbose){
 	//create and check input stream
 	ifstream input(queryfile);
 	if(!input.good()){
@@ -374,7 +375,7 @@ vector<pair<string,string>> parseFasta(const string& queryfile, const int& k, bo
 
 void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, const double& db_size, const int& k, const int& d, const vector<pair<string,string>>& fasta, QuerySearch& que, int start, int end, const string query, bool verbose){
 		running++;
-		const int sigma = 4;
+		//const int sigma = 4;
 
 		if (end == 0){
 			end = fasta.size();
@@ -384,7 +385,7 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 		for(int i = start; i < end; i++) {
 			pair<string,string> seq = fasta[i];
 
-			unordered_map<size_t,vector<int>> res = que.search(seq.second, k, d, seq.first);
+			unordered_map<size_t,vector<int>> res = que.search(seq.second, k, d);
 			//tra.remove_singletonHits(res);
 
 			for (auto& hit : res){
@@ -437,7 +438,7 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 
 void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, const double& db_size, const int& k, const int& d, const string queryfile, QuerySearch& que, string& outprefix, bool verbose){
 	running++;
-	const int sigma = 4;
+	//const int sigma = 4;
 
 	vector<pair<string,string>> fasta = parseFasta(queryfile, k, verbose);
 
@@ -465,7 +466,7 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 
 	vector<searchResult> results;
 	for(auto& seq: fasta) {
-		unordered_map<size_t,vector<int>> res = que.search(seq.second, k, d, seq.first);
+		unordered_map<size_t,vector<int>> res = que.search(seq.second, k, d);
 		//tra.remove_singletonHits(res);
 
 		for (auto& hit : res){
@@ -670,7 +671,7 @@ int main(int argc, char **argv) {
 						++c;
 					}
 
-					SubGraphTraverser::subgraphs result = tra.extractSubGraph_intelligent(seq.second, opt.k, opt.d, opt.outprefix, query);
+					SubGraphTraverser::subgraphs result = tra.extractSubGraph_intelligent(seq.second, opt.k, opt.d);
 					tra.printPaths_intelligent(opt.outprefix, query, result, seq.first);
 				}
 			}
@@ -735,11 +736,11 @@ int main(int argc, char **argv) {
 			//two possibilities: if number of query files given > number of threads, run each query file in a different thread
 			//otherwise: distribute threads to query files, split given query file over assigned threads evenly
 			if(opt.queryfiles.size() > 1 && num_threads > 0){
-				int i = 0;
+				unsigned int i = 0;
 				while (i < opt.queryfiles.size()-1){
 
 					std::vector<thread> threadList;
-					int thread_counter = 0;
+					unsigned int thread_counter = 0;
 					while (thread_counter <= num_threads){
 						if (i < opt.queryfiles.size()){
 							threadList.push_back(std::thread(run_subsample_completeQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), opt.queryfiles[i], std::ref(que), std::ref(opt.outprefix), opt.verbose));
@@ -783,13 +784,13 @@ int main(int argc, char **argv) {
 						bucketSize = fasta.size();
 					} else {
 						bucketSize = fasta.size() / (num_threads);
-						size_t leftOvers = fasta.size() % (num_threads);
+						//size_t leftOvers = fasta.size() % (num_threads);
 					}
 
-					int thread_counter = 0;
+					unsigned int thread_counter = 0;
 					std::vector<thread> threadList;
 
-					for(int i = 0; i < fasta.size(); i=i+bucketSize) {
+					for(unsigned int i = 0; i < fasta.size(); i=i+bucketSize) {
 
 						if (thread_counter+1 < num_threads){
 							threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(que), i, (i+bucketSize),query, opt.verbose));

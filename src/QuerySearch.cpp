@@ -26,7 +26,7 @@ QuerySearch::QuerySearch(ColoredCDBG<UnitigData>& graph) : cdbg(graph) {
 // FUNC 1: Search Bifrost graph for queries, consider K-mer neighborhood up to distance d
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-unordered_map<size_t,vector<int>> QuerySearch::search(const string& query, const int k, const int ndistance, const string& query_name) const {
+unordered_map<size_t,vector<int>> QuerySearch::search(const string& query, const int k, const int ndistance) const {
 
 	const size_t num_kmers = query.length() - k + 1;
 	const char *query_str = query.c_str(); //split query into sequence of kmers (!!! query can contain a kmer multiple times, do not change the order of the kmers at this point!)
@@ -115,7 +115,7 @@ vector<Kmer> QuerySearch::compute_neighborhood(const string& kmer_str, const int
 
 	firstRow.reserve(kmer_str.size());
 
-	for (int i = 0; i <= kmer_str.size(); ++i) firstRow.push_back(i);
+	for (unsigned int i = 0; i <= kmer_str.size(); ++i) firstRow.push_back(i);
 
 	QuerySearch::searchNextRow(string(""), kmer_str, firstRow, neighborhood, alphabet, alphabet_sz, d);
 
@@ -164,7 +164,7 @@ void QuerySearch::searchNextRow(const string& v, const string& word, const vecto
 			vector<int> nextRow;
 			nextRow.push_back(lastRow[0]+1); //first entry can only be an insert
 
-			for (int i = 1; i< lastRow.size(); ++i){
+			for (unsigned int i = 1; i< lastRow.size(); ++i){
 				const int ins = lastRow[i]+1;
 				const int del = nextRow[i-1]+1;
 				const int sub = lastRow[i-1] + (str[i-1] != alphabet[j]);
@@ -192,7 +192,7 @@ int QuerySearch::compute_score(const vector<int>& hit) const {
 
 	int mismatch = 0;
 	int cnt = 0;
-	int cnt_hit = 0;
+	//int cnt_hit = 0;
 
 	for (const auto elem : hit){
 
@@ -243,11 +243,11 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 
 	searchResultSubgraph result;
 
-	int kmer_count = 0;
+	unsigned int kmer_count = 0;
 	//bool first_seq = true;
 	unordered_map<size_t,bool> first;
-	bool wasEmpty = false;
-	const UnitigColors* old_uc;
+	//bool wasEmpty = false;
+	//const UnitigColors* old_uc;
 
 	for(KmerIterator it_km(query_str), it_km_end; it_km != it_km_end; ++it_km){ //search each kmer in cdbg and return color set
 
@@ -277,7 +277,7 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 
 			//bool copy = (!first_seq && !wasEmpty && (uc == old_uc));
 			bool copy = false;
-			old_uc = uc;
+			//old_uc = uc;
 
 			//ToDo: CHECK HERE!!!
 			Kmer head = map.getMappedHead();
@@ -331,7 +331,7 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 						//check if this 1 ends a stretch of 0's, in which case the stretch of 0's has to be at least of length k!
 						bool ok = true;
 						if (kmer_count > Kmer::k && arr[color][kmer_count-1] == 0){
-							for(int i=2; i<=Kmer::k; i++){
+							for(unsigned int i=2; i<=Kmer::k; i++){
 								if (arr[color][kmer_count-i] != 0){
 									ok = false;
 									break;
@@ -398,7 +398,7 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 			//now check the k-mers neighborhood too, but do not overwrite perfect matches!
 			if (ndistance > 0){
 				const vector<Kmer> neighborhood = QuerySearch::compute_neighborhood(it_km->first.toString(), ndistance);
-				bool remove_only_once = true;
+				//bool remove_only_once = true;
 				for (const auto& nkmer : neighborhood){
 					UnitigColorMap<UnitigData> nmap = cdbg.find(nkmer);
 
@@ -478,8 +478,8 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 												UnitigColorMap<UnitigData> ucm = cdbg.find(previous);
 
 												for (const auto& successor : ucm.getSuccessors()){
-													const DataAccessor<UnitigData>* da = successor.getData();
-													const UnitigColors* uc = da->getUnitigColors(successor);
+													//const DataAccessor<UnitigData>* da = successor.getData();
+													//const UnitigColors* uc = da->getUnitigColors(successor);
 
 													Kmer prev_head = successor.getMappedHead();
 													Kmer alternative = successor.getUnitigHead();
@@ -524,7 +524,7 @@ QuerySearch::searchResultSubgraph QuerySearch::search_kmers(const string& query,
 				}
 			}
 		}
-		wasEmpty = map.isEmpty;
+		//wasEmpty = map.isEmpty;
 
 		++kmer_count;
 	}
