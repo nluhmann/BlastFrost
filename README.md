@@ -20,6 +20,11 @@ mkdir build; cd build; cmake ..; make
 ```
 
 
+### Install Troubleshooting
+You might run into problems linking BlastFrost to your Bifrost installation (you are probably running MacOS?).
+Please see the [Bifrost troubleshooting section](https://github.com/pmelsted/bifrost#troubleshooting) to correctly set environment variables on your system.
+
+
 
 ## Usage
 ```
@@ -67,6 +72,28 @@ We can extend the k-mer search result by extracting a subgraph for the query, ad
 
 
 ## Citation
+Our BlastFrost paper is currently under review, but you can check out the preprint:
 
+[BlastFrost: Fast querying of 100,000 s of bacterial genomes in Bifrost graphs](https://www.biorxiv.org/content/10.1101/2020.01.21.914168v1.abstract)
 
+[Bifrost - Highly parallel construction and indexing of colored and compacted de Bruijn graphs](https://www.biorxiv.org/content/10.1101/695338v2.abstract)
+
+```
+@article{luhmann2020blastfrost,
+  title={BlastFrost: Fast querying of 100,000 s of bacterial genomes in Bifrost graphs},
+  author={Luhmann, Nina and Holley, Guillaume and Achtman, Mark},
+  journal={BioRxiv},
+  year={2020},
+  publisher={Cold Spring Harbor Laboratory}
+}
+
+@article {holley2019bifrost,
+  author = {Holley, Guillaume and Melsted, P{\'a}ll},
+  title = "{Bifrost - Highly parallel construction and indexing of colored and compacted de Bruijn graphs}",
+  elocation-id = {695338},
+  doi = {10.1101/695338},
+  journal = {bioRxiv},
+  year = {2019}
+}
+```
 
