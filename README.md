@@ -76,17 +76,18 @@ We can extend the k-mer search result by extracting a subgraph for the query, ad
 ## BlastFrost-AMR
 BlastFrost-AMR is an application of BlastFrost, based on AMR genes in [Bacterial Antimicrobial Resistance Reference Gene Database](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA313047). 
 
-BlastFrost-AMR can be run directly in any Python 3 environment. Use 
+BlastFrost-AMR can be run directly in any Python 3 environment. First, download the lastest database from NCBI:  
 ```
 BlastFrost-AMR build -b </path/to/bifrost>
 ```
+ 
 
-To download the lastest database from NCBI. And search the presence/absence of these AMR genes in a pre-computed Bifrost graph: 
+To search the presence/absence of AMR genes in a pre-computed Bifrost graph: 
 ```
 BlastFrost-AMR query -g </path/to/graph> -p <prefix>
 ```
 
-Use '--help' to get detailed manual for BlastFrost-AMR. 
+Also, use '--help' to get detailed manual for BlastFrost-AMR. 
 
 
 ## Citation
