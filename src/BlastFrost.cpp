@@ -176,9 +176,13 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 		exit (EXIT_FAILURE);
 	}
 	else if (opt.colorfile.empty()){
-		cout << "No input file given to load Bifrost graph colors!" << endl;
-		PrintUsage();
-		exit (EXIT_FAILURE);
+                opt.colorfile = opt.graphfile.substr(0, opt.graphfile.length()-3)+"bfg_colors";
+                if (access(opt.colorfile.c_str(), F_OK) == -1) {
+                                cout << "No input file given to load Bifrost graph colors!" << endl;
+		                PrintUsage();
+                		exit (EXIT_FAILURE);
+
+                }
 	}
 //	} else if (! exists_test(opt.queryfiles[0])){
 //		cout << "Cannot read query file." << endl;
@@ -455,11 +459,13 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 	mtx_deleting.lock();
 	//delete potentially existing search file for this query
 	string f = outprefix+"_"+query+".search";
-	if (std::remove(f.c_str()) != 0) {
-		perror("Error deleting file.");
-	} else {
-		if (verbose){
-			cout << "### File " << f << " removed." << endl;
+	if (access(f.c_str(), F_OK) != -1) {
+		if (std::remove(f.c_str()) != 0) {
+			perror("Error deleting file.");
+		} else {
+			if (verbose){
+				cout << "### File " << f << " removed." << endl;
+			}
 		}
 	}
 	mtx_deleting.unlock();
@@ -658,10 +664,12 @@ int main(int argc, char **argv) {
 
 				//delete potentially existing search file for this query
 				string f = opt.outprefix+"_"+query+"_subgraph.fasta";
-				if (std::remove(f.c_str()) != 0) {
-					perror( "Error deleting file" );
-				} else {
-					cout << "File " << f << " removed" << endl;
+                                if (access(f.c_str(), F_OK) != -1) {
+					if (std::remove(f.c_str()) != 0) {
+						perror( "Error deleting file" );
+					} else {
+						cout << "File " << f << " removed" << endl;
+					}
 				}
 
 				int c = 0;
@@ -772,11 +780,13 @@ int main(int argc, char **argv) {
 
 					//delete potentially existing search file for this query
 					string f = opt.outprefix+"_"+query+".search";
-					if (std::remove(f.c_str()) != 0) {
-						perror( "Error deleting file" );
-					} else {
-						cout << "File " << f << " removed" << endl;
-					}
+				        if (access(f.c_str(), F_OK) != -1) {
+						if (std::remove(f.c_str()) != 0) {
+                       					perror("Error deleting file.");
+                				} else {
+                                			cout << "### File " << f << " removed." << endl;
+                				}
+       				 	}
 
 					vector<pair<string,string>> fasta = parseFasta(queryfile, opt.k, opt.verbose);
 					size_t bucketSize = 0;
