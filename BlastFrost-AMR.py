@@ -1,22 +1,32 @@
 #!/usr/bin/env python
 import sys, os, logging, subprocess
-from pip._internal import main as pipmain
+import shutil
+
 try :
     import click, requests
 except :
+    try :
+        from pip._internal import main as pipmain
+    except :
+        from pip import main as pipmain
     pipmain(['install', 'click', 'request'])
     import click, requests
 
 logging.basicConfig(format='%(asctime)s | %(message)s', level='INFO')
 
 dirname = os.path.dirname(__file__)
-blastFrost = os.path.join(dirname, 'build', 'BlastFrost')
 barrd = os.path.join(dirname, 'barrd')
 
+if shutil.which('BlastFrost') :
+    blastFrost = shutil.which('BlastFrost')
+elif os.path.isfile(os.path.join(dirname,'BlastFrost')) :
+    blastFrost = os.path.join(dirname, 'BlastFrost')
+elif os.path.isfile(os.path.join(dirname, 'build', 'BlastFrost')) :
+    blastFrost = os.path.join(dirname, 'build', 'BlastFrost')
+else :
+    logging.error('BlastFrost has not been compiled. Please compile it before running BlastFrost-AMR')
+
 def checkFiles() :
-    if not os.path.isfile(blastFrost):
-        logging.error('BlastFrost has not been compiled. Please compile it before running BlastFrost-AMR')
-        sys.exit(1)
     if not os.path.isfile(barrd+'.nuc') or not os.path.isfile(barrd+'.incompatible') :
         logging.error('Bacterial Antimicrobial Resistance Reference Gene Database is not found. Use BlastFrost-AMR -b <path/to/bifrost> to build the database.')
         sys.exit(1)
@@ -29,6 +39,9 @@ def main() :
 @click.option('-b', '--bifrost', help='path to Bifrost', default='Bifrost')
 @click.option('-t', '--thread', help='[Default: 1] Number of threads. defulat: 1', default=1, type=int)
 def build(bifrost, thread) :
+    '''
+    Download and build latest NCBI AMR database.
+    '''
     logging.warning('Downloading database from from https://ftp.ncbi.nlm.nih.gov/pathogen/Antimicrobial_resistance/AMRFinderPlus/database/latest/AMR_CDS')
     with open(barrd+'.nuc', 'wt') as fout :
         fout.write(requests.get('https://ftp.ncbi.nlm.nih.gov/pathogen/Antimicrobial_resistance/AMRFinderPlus/database/latest/AMR_CDS').text)
@@ -75,7 +88,6 @@ def build(bifrost, thread) :
             fout.write('{0}\t{1}\n'.format(k, ','.join(y)))
     for fn in (barrd+'.txt', barrd+'.gfa', barrd+'.bfg_colors', barrd+'_barrd.nuc.search') :
         os.unlink(fn)
-    import shutil
     shutil.rmtree(barrd+'.dir')
     
     
@@ -86,6 +98,9 @@ def build(bifrost, thread) :
 @click.option('-n', '--nofilter', help='[Default]: filter out similar hits; Flag: no filter', is_flag=True, default=False)
 @click.option('-t', '--thread', help='[Default: 1] Number of threads. defulat: 1', default=1, type=int)
 def query(graph, prefix, dist, nofilter, thread) :
+    '''
+    Search AMR genes on the queried genomes.
+    '''
     checkFiles()
     if prefix == '' :        
         prefix = graph
