@@ -73,7 +73,7 @@ We can extend the k-mer search result by extracting a subgraph for the query, ad
 /path/to/BlastFrost -g testdata/yersinia_cdBG.gfa -f testdata/yersinia_cdBG.bfg_colors -q testdata/testquery -o outtest -t 1 -s 4.6 -v -e
 ```
 
-### BlastFrost-AMR
+## BlastFrost-AMR
 BlastFrost-AMR is an application of BlastFrost, based on AMR genes in [Bacterial Antimicrobial Resistance Reference Gene Database](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA313047). 
 
 BlastFrost-AMR can be run directly in any Python 3 environment. Use 
