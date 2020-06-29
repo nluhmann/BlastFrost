@@ -582,7 +582,7 @@ int main(int argc, char **argv) {
 		PrintUsage();
 	} else {
 
-		const clock_t load_time = clock();
+	  //const clock_t load_time = clock();
 
 		searchOptions opt;
 		parseArgumentsNew(argc, argv, opt);
@@ -598,10 +598,10 @@ int main(int argc, char **argv) {
 		}
 
 
-		cout << "Loading took " << (float( clock() - load_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
+		//cout << "Loading took about" << ((float( clock() - load_time ) / (int)opt.nb_threads) / CLOCKS_PER_SEC) << "sec." << endl;
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		const clock_t begin_time = clock();
+		//const clock_t begin_time = clock();
 
 
 		//Average genome size
@@ -609,12 +609,12 @@ int main(int argc, char **argv) {
 		if(opt.avg == 0){
 			avg_genomeSize = cdbg.size(); //overestimate?
 			if(opt.verbose){
-				cout << "Estimate for avg. genome size: " << avg_genomeSize << endl;
+			  //cout << "Estimate for avg. genome size: " << avg_genomeSize << endl;
 			}
 		} else {
 			avg_genomeSize = opt.avg * 1000000;
 			if(opt.verbose){
-				cout << "Input for avg. genome size: " << avg_genomeSize << endl;
+			  //cout << "Input for avg. genome size: " << avg_genomeSize << endl;
 			}
 		}
 
@@ -676,7 +676,7 @@ int main(int argc, char **argv) {
 				}
 			}
 
-			cout << "Subgraph extraction took " << (float( clock() - begin_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
+			//cout << "Subgraph extraction took " << (float( clock() - begin_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
 
 
 		//TESTING/ IN DEVELOPMENT
@@ -821,7 +821,7 @@ int main(int argc, char **argv) {
 				}
 			}
 
-			cout << "Search took " << (float( clock () - begin_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
+			//cout << "Search took " << (float( clock () - begin_time ) /  CLOCKS_PER_SEC) << "sec." << endl;
 		}
 		cout << "Goodbye!" << endl;
 	}
