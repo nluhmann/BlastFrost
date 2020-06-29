@@ -19,6 +19,13 @@ Then you can install BlastFrost:
 mkdir build; cd build; cmake ..; make
 ```
 
+### Large k-mers
+Bifrost has a standard maximum k-mer size of 31, but can be adjusted at compilation to accept larger values for k. If you compiled Bifrost with a larger max k, you will accordingly need to adjust the parameter in CMakeList.txt:
+
+```
+add_definitions(-DMAX_KMER_SIZE=64)
+```
+In this example, you can then use BlastFrost for graphs with a maximum k-mer size of 63. 
 
 ### Install Troubleshooting
 You might run into problems linking BlastFrost to your Bifrost installation (you are probably running MacOS?).
@@ -41,7 +48,6 @@ Optional parameters:
 
   -e,          Enable subgraph extraction
   -t,          Number of threads (default is 1)
-  -k,          Length of k-mers (default is 31, max. is 31)
   -d,          Compute and search d-neighborhood of queried k-mers
   -c,          Enhance gfa file with color information, option can be run without a query search.
   -s,          Average size of genomes in Bifrost graph in Mb
