@@ -12,6 +12,7 @@ You can learn more about Bifrost graphs and how to build them [here](https://git
 
 ## Install
 First, you need to install Bifrost: https://github.com/pmelsted/bifrost
+!! For the moment, BlastFrost only works with Bifrost installed from source. We are working on a conda installation. !!
 
 Then you can install BlastFrost:
 
