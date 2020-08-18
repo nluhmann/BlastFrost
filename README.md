@@ -10,21 +10,29 @@ You can learn more about Bifrost graphs and how to build them [here](https://git
 * C++11 compiler
 
 
-## Install
-First, you need to install Bifrost: https://github.com/pmelsted/bifrost
-!! For the moment, BlastFrost only works with Bifrost installed from source. We are working on a conda installation. !!
+## Install from source
+1. Clone the github repository
+```
+git clone --recursive https://github.com/nluhmann/BlastFrost.git
+cd BlastFrost
+```
 
-Then you can install BlastFrost:
-
+2. Install BlastFrost
 ```
 mkdir build; cd build; cmake ..; make
 ```
+
+Note that this will also compile Bifrost(https://github.com/pmelsted/bifrost) for you. You can use the executable in BlastFrost/bifrost/src/Bifrost to create your bifrost graph that is required as input to Bifrost.
+
+## Conda
+TBA
+
 
 ### Large k-mers
 Bifrost has a standard maximum k-mer size of 31, but can be adjusted at compilation to accept larger values for k. If you compiled Bifrost with a larger max k, you will accordingly need to adjust the parameter in CMakeList.txt:
 
 ```
-add_definitions(-DMAX_KMER_SIZE=64)
+set(-MAX_KMER_SIZE=64)
 ```
 In this example, you can then use BlastFrost for graphs with a maximum k-mer size of 63. 
 
