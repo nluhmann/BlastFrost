@@ -65,7 +65,7 @@ For testing, the directory `testdata` in this repository contains a pre-computed
 ### K-mer search
 Simple k-mer search for query on a single thread, providing the average genome length of *Y. pestis* as input:
 ```
-/path/to/BlastFrost -g testdata/yersinia_cdBG.gfa -f testdata/yersinia_cdBG.bfg_colors -q testdata/testquery -o outtest -t 1 -s 4.6 -v 
+/path/to/BlastFrost -g yersinia_5.gfa -f yersinia_5.bfg_colors -q testquery -o outtest -s 4.6 -v -t 1
 ```
 
 ### Subgraph extraction
