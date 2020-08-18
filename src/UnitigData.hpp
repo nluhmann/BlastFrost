@@ -8,7 +8,7 @@
 #define UNITIGDATA_HPP_
 
 
-#include <bifrost/ColoredCDBG.hpp>
+#include <ColoredCDBG.hpp>
 
 
 

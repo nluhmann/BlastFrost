@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <sys/stat.h>
 
-#include <bifrost/ColoredCDBG.hpp>
+#include "ColoredCDBG.hpp"
 #include "SubGraphTraverser.hpp"
 #include "QuerySearch.hpp"
 #include "BubbleExplorer.hpp"

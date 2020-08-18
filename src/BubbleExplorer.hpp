@@ -11,7 +11,7 @@
 
 
 
-#include <bifrost/ColoredCDBG.hpp>
+#include <ColoredCDBG.hpp>
 #include "UnitigData.hpp"
 
 #include <stack>
