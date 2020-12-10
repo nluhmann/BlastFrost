@@ -100,6 +100,8 @@ Also, use '--help' to get detailed manual for BlastFrost-AMR.
 
 
 ## Citation
+[![DOI](https://zenodo.org/badge/135275732.svg)](https://zenodo.org/badge/latestdoi/135275732)
+
 Our BlastFrost paper is currently under review, but you can check out the preprint:
 
 [BlastFrost: Fast querying of 100,000 s of bacterial genomes in Bifrost graphs](https://www.biorxiv.org/content/10.1101/2020.01.21.914168v1.abstract)
@@ -115,13 +117,15 @@ Our BlastFrost paper is currently under review, but you can check out the prepri
   publisher={Cold Spring Harbor Laboratory}
 }
 
-@article {holley2019bifrost,
-  author = {Holley, Guillaume and Melsted, P{\'a}ll},
-  title = "{Bifrost - Highly parallel construction and indexing of colored and compacted de Bruijn graphs}",
-  elocation-id = {695338},
-  doi = {10.1101/695338},
-  journal = {bioRxiv},
-  year = {2019}
+@article{holley2020bifrost,
+  title={Bifrost: highly parallel construction and indexing of colored and compacted de Bruijn graphs},
+  author={Holley, Guillaume and Melsted, P{\'a}ll},
+  journal={Genome biology},
+  volume={21},
+  number={1},
+  pages={1--20},
+  year={2020},
+  publisher={BioMed Central}
 }
 ```
 
