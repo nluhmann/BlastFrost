@@ -1,5 +1,6 @@
 #include <string>
 #include <fstream>
+#include <iostream>
 #include <cstdio>
 #include <thread>
 #include <queue>
@@ -7,14 +8,21 @@
 #include <atomic>
 #include <unordered_map>
 #include <sys/stat.h>
+#include <unistd.h>
+#include "getopt.h"
 
+#pragma warning( disable : 4267 4244 4305)
 #include "ColoredCDBG.hpp"
 #include "SubGraphTraverser.hpp"
 #include "QuerySearch.hpp"
 #include "BubbleExplorer.hpp"
 #include "UnitigData.hpp"
 
-
+#ifdef _WIN32
+#define FILESEP "\\"
+#else
+#define FILESEP "/"
+#endif
 using namespace std;
 
 
@@ -378,7 +386,7 @@ vector<pair<string,string>> parseFasta(const string& queryfile, const unsigned i
 
 
 void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, const double& db_size, const int& k, const int& d, const vector<pair<string,string>>& fasta, QuerySearch& que, int start, int end, const string query, bool verbose){
-		running++;
+//		running++;	//Do this before entering thread!
 		//const int sigma = 4;
 
 		if (end == 0){
@@ -441,12 +449,12 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 
 
 void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, const double& db_size, const int& k, const int& d, const string queryfile, QuerySearch& que, string& outprefix, bool verbose){
-	running++;
+//	running++;	//Do this before entering thread
 	//const int sigma = 4;
 
 	vector<pair<string,string>> fasta = parseFasta(queryfile, k, verbose);
 
-	std::string delim = "/";
+	std::string delim = FILESEP;
 	auto start = 0U;
 	auto end = queryfile.find(delim);
 	while (end != std::string::npos){
@@ -653,7 +661,7 @@ int main(int argc, char **argv) {
 				vector<pair<string,string>> fasta = parseFasta(queryfile, opt.k, opt.verbose);
 
 
-				std::string delim = "/";
+				std::string delim = FILESEP;
 				auto start = 0U;
 				auto end = queryfile.find(delim);
 				while (end != std::string::npos){
@@ -751,6 +759,7 @@ int main(int argc, char **argv) {
 					unsigned int thread_counter = 0;
 					while (thread_counter <= num_threads){
 						if (i < opt.queryfiles.size()){
+							running++;
 							threadList.push_back(std::thread(run_subsample_completeQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), opt.queryfiles[i], std::ref(que), std::ref(opt.outprefix), opt.verbose));
 							thread_counter++;
 							i++;
@@ -769,7 +778,7 @@ int main(int argc, char **argv) {
 				if (num_threads > 0){
 					//parse fasta file
 					string queryfile = opt.queryfiles[0];
-					std::string delim = "/";
+					std::string delim = FILESEP;
 					auto start = 0U;
 					auto end = queryfile.find(delim);
 					while (end != std::string::npos){
@@ -803,9 +812,11 @@ int main(int argc, char **argv) {
 					for(unsigned int i = 0; i < fasta.size(); i=i+bucketSize) {
 
 						if (thread_counter+1 < num_threads){
+							running++;
 							threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(que), i, (i+bucketSize),query, opt.verbose));
 							thread_counter++;
 						} else {
+							running++;
 							threadList.push_back(std::thread(run_subsample_partialQuery, std::ref(q), std::ref(db_size), std::ref(k), std::ref(opt.d), std::ref(fasta),  std::ref(que),i,0,query, opt.verbose));
 							break;
 						}
