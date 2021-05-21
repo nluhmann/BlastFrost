@@ -8,10 +8,7 @@
 #include <atomic>
 #include <unordered_map>
 #include <sys/stat.h>
-#include <unistd.h>
-#include "getopt.h"
 
-#pragma warning( disable : 4267 4244 4305)
 #include "ColoredCDBG.hpp"
 #include "SubGraphTraverser.hpp"
 #include "QuerySearch.hpp"
@@ -25,6 +22,7 @@
 #endif
 using namespace std;
 
+#define PVALUE 0.05
 
 
 std::mutex mtx_queue;           // mutex for critical section
@@ -415,7 +413,7 @@ void run_subsample_partialQuery(queue<pair<string,vector<searchResult>>>& q, con
 
 
 
-				if (pvalue2 <= 0.05){ //create new searchResult and push to all results
+				if (pvalue2 <= PVALUE){ //create new searchResult and push to all results
 					searchResult result;
 					result.evalue = evalue2;
 					result.pvalue = pvalue2;
@@ -491,7 +489,7 @@ void run_subsample_completeQuery(queue<pair<string,vector<searchResult>>>& q, co
 			const long double evalue2 = pow(10,log_evalue);
 			const long double pvalue2 = pow(10,log_pvalue);
 
-			if (pvalue2 <= 0.05){ //create new searchResult and push to all results
+			if (pvalue2 <= PVALUE){ //create new searchResult and push to all results
 				searchResult result;
 				result.evalue = evalue2;
 				result.pvalue = pvalue2;

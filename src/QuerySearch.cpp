@@ -35,7 +35,7 @@ unordered_map<size_t,vector<int>> QuerySearch::search(const string& query, const
 	int kmer_count = 0;
 	bool first = true;
 	bool wasEmpty = false;
-	const UnitigColors* old_uc;
+	const UnitigColors* old_uc = 0;
 
 	for(KmerIterator it_km(query_str), it_km_end; it_km != it_km_end; ++it_km){ //search each kmer in cdbg and return color set
 
@@ -67,29 +67,31 @@ unordered_map<size_t,vector<int>> QuerySearch::search(const string& query, const
 						arr[color][kmer_count] = 1;
 				}
 			}
+		}
 
-			//now check the k-mers neighborhood too, but do not overwrite perfect matches!
-			if (ndistance > 0){
-				const vector<Kmer> neighborhood = QuerySearch::compute_neighborhood(it_km->first.toString(), ndistance);
-				for (const auto& nkmer : neighborhood){
-					const const_UnitigColorMap<UnitigData> nmap = cdbg.find(nkmer);
 
-					if (!nmap.isEmpty) {
-						const DataAccessor<UnitigData>* nda = nmap.getData();
-						const UnitigColors* nuc = nda->getUnitigColors(nmap);
+		//now check the k-mers neighborhood too, but do not overwrite perfect matches!
+		//	This should be done even if no perfect matches were found at this location
+		if (ndistance > 0){
+			const vector<Kmer> neighborhood = QuerySearch::compute_neighborhood(it_km->first.toString(), ndistance);
+			for (const auto& nkmer : neighborhood){
+				const const_UnitigColorMap<UnitigData> nmap = cdbg.find(nkmer);
 
-						for (UnitigColors::const_iterator nit = nuc->begin(nmap); nit != nuc->end(); ++nit) {
-							const size_t ncolor = nit.getColorID();
+				if (!nmap.isEmpty) {
+					const DataAccessor<UnitigData>* nda = nmap.getData();
+					const UnitigColors* nuc = nda->getUnitigColors(nmap);
 
-							if (nuc -> contains(nmap, ncolor)){
-								std::unordered_map<size_t,vector<int>>::iterator niter = arr.find(ncolor);
+					for (UnitigColors::const_iterator nit = nuc->begin(nmap); nit != nuc->end(); ++nit) {
+						const size_t ncolor = nit.getColorID();
 
-								if (niter == arr.end()){
-									arr.insert({ncolor, vector<int>(num_kmers, 0)});
-									arr[ncolor][kmer_count] = 2;
-								}
-								else if (arr[ncolor][kmer_count] == 0) arr[ncolor][kmer_count] = 2;
+						if (nuc -> contains(nmap, ncolor)){
+							std::unordered_map<size_t,vector<int>>::iterator niter = arr.find(ncolor);
+
+							if (niter == arr.end()){
+								arr.insert({ncolor, vector<int>(num_kmers, 0)});
+								arr[ncolor][kmer_count] = 2;
 							}
+							else if (arr[ncolor][kmer_count] == 0) arr[ncolor][kmer_count] = 2;
 						}
 					}
 				}
