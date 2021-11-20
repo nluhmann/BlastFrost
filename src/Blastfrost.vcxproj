@@ -185,7 +185,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\MSVCC\codeStubs\getopt.h" />
-    <ClInclude Include="..\MSVCC\codeStubs\unistd.h" />
+    <ClInclude Include="..\MSVCC\codeStubs\winStubs.h" />
     <ClInclude Include="BubbleExplorer.hpp" />
     <ClInclude Include="QuerySearch.hpp" />
     <ClInclude Include="SubGraphTraverser.hpp" />

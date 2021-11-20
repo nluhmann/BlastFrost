@@ -59,7 +59,7 @@
     <ClInclude Include="..\MSVCC\codeStubs\getopt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\MSVCC\codeStubs\unistd.h">
+    <ClInclude Include="..\MSVCC\codeStubs\winStubs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

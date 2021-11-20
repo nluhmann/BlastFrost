@@ -67,6 +67,7 @@ void PrintUsage() {
 struct searchOptions {
 	string graphfile;
 	string colorfile;
+	string genomefile;
 	vector<string> queryfiles;
 	size_t nb_threads;
 	bool verbose;
@@ -103,7 +104,7 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 
 	int oc; //option character
 
-	while ((oc = getopt(argc, argv, "o:t:q:g:f:k:d:l:r:s:evca")) != -1) {
+	while ((oc = getopt(argc, argv, "o:t:q:g:f:h:k:d:l:r:s:evca")) != -1) {
 		switch (oc) {
 		//mandatory arguments
 		case 'g':
@@ -111,6 +112,9 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 			break;
 		case 'f':
 			opt.colorfile = optarg;
+			break;
+		case 'h':
+			opt.genomefile = optarg;
 			break;
 		case 'q':
 			for (optind--; (optind < argc) && (*argv[optind] != '-'); ++optind) {
@@ -176,21 +180,33 @@ void parseArgumentsNew(int argc, char **argv, searchOptions& opt) {
 	//check for mandatory arguments
 
 	//check if precomputed graph prefix is given (-g)
-	if (opt.graphfile.empty()){
-		cout << "No input file given to load Bifrost graph!" << endl;
-		PrintUsage();
-		exit (EXIT_FAILURE);
+	if (!opt.genomefile.empty())
+	{
+		if (!opt.graphfile.empty() || !opt.colorfile.empty())
+		{
+			cout << "Dont enter graphfile or color file if entering genome" << endl;
+			PrintUsage();
+			exit(EXIT_FAILURE);
+		}
 	}
-	else if (opt.colorfile.empty()){
-                opt.colorfile = opt.graphfile.substr(0, opt.graphfile.length()-3)+"bfg_colors";
-                if (access(opt.colorfile.c_str(), F_OK) == -1) {
-                                cout << "No input file given to load Bifrost graph colors!" << endl;
-		                PrintUsage();
-                		exit (EXIT_FAILURE);
+	else
+	{
+		if (opt.graphfile.empty()) {
+			cout << "No input file given to load Bifrost graph!" << endl;
+			PrintUsage();
+			exit(EXIT_FAILURE);
+		}
+		else if (opt.colorfile.empty()) {
+			opt.colorfile = opt.graphfile.substr(0, opt.graphfile.length() - 3) + "bfg_colors";
+			if (access(opt.colorfile.c_str(), F_OK) == -1) {
+				cout << "No input file given to load Bifrost graph colors!" << endl;
+				PrintUsage();
+				exit(EXIT_FAILURE);
 
-                }
+			}
+		}
 	}
-//	} else if (! exists_test(opt.queryfiles[0])){
+		//	} else if (! exists_test(opt.queryfiles[0])){
 //		cout << "Cannot read query file." << endl;
 //		exit (EXIT_FAILURE);
 //	}
@@ -601,12 +617,37 @@ int main(int argc, char **argv) {
 
 
 		//init and load pre-computed Bifrost graph
-		ColoredCDBG<UnitigData> cdbg;
-		if (cdbg.read(opt.graphfile, opt.colorfile, opt.nb_threads, opt.verbose)){
-			cout << "Graph loading successful" << endl;
-		} else {
-			cout << "Graph could not be loaded! Exit." << endl;
-			exit (EXIT_FAILURE);
+		ColoredCDBG<UnitigData> cdbg(opt.k,-1);
+
+		if (opt.genomefile.size())
+		{
+			CCDBG_Build_opt buildOpt;
+			buildOpt.nb_threads = opt.nb_threads;
+			buildOpt.read_chunksize = 64;
+			buildOpt.deleteIsolated = false;
+			buildOpt.clipTips = false;
+			buildOpt.verbose = opt.verbose;
+			buildOpt.k = opt.k;
+
+
+
+			buildOpt.filename_ref_in.push_back(opt.genomefile);
+
+			cdbg.buildGraph(buildOpt);
+//			cdbg.simplify(buildOpt.deleteIsolated, buildOpt.clipTips, buildOpt.verbose);
+			cdbg.buildColors(buildOpt);
+//			cdbg.write(opt.genomefile, buildOpt.nb_threads, buildOpt.verbose);
+
+		}
+		else
+		{
+			if (cdbg.read(opt.graphfile, opt.colorfile, opt.nb_threads, opt.verbose)) {
+				cout << "Graph loading successful" << endl;
+			}
+			else {
+				cout << "Graph could not be loaded! Exit." << endl;
+				exit(EXIT_FAILURE);
+			}
 		}
 
 
